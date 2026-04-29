@@ -60,6 +60,7 @@ void SceneManager::OnUpdate(float deltaTime)
 {
 	GameSettings::Get()->OnUpdate(deltaTime);
 
+
 	if (m_CurrentScene == nullptr)
 		std::cout << "当前场景指针为空" << std::endl;
 	else
