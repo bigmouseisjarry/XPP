@@ -1,0 +1,446 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="渲染引擎">
+      <UniqueIdentifier>{f84c0e5a-c528-4e0a-9cbb-424057762afb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理">
+      <UniqueIdentifier>{454e41ab-7057-4f7b-8c92-94614abc5146}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{ea1d46b2-9df8-4f0e-b534-ec165e2a175a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="游戏输入控制">
+      <UniqueIdentifier>{82cb16ff-426d-4010-9245-7bcecf8cc31f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="工厂管理">
+      <UniqueIdentifier>{1d8fd343-cfa8-4ff1-9b55-229ebc7fb80a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="扩展库">
+      <UniqueIdentifier>{ce624975-5fe4-4309-b43d-b1f2e17903a0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="主程序">
+      <UniqueIdentifier>{ba180f7f-a4b0-4f90-b629-0d16b356db04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="资源管理器">
+      <UniqueIdentifier>{a5ef7c01-8cec-4b58-a793-eed47fea3a89}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="扩展库\imgui">
+      <UniqueIdentifier>{7374410c-a7a7-4ea6-b912-2131e75d570e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="扩展库\stb_image">
+      <UniqueIdentifier>{ea832c8a-fcb1-4245-8189-27147f79fbdc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="扩展库\tinygltf">
+      <UniqueIdentifier>{662ebefe-92c4-4bae-8aa5-a3f253e16809}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="扩展库\tinyobjloader">
+      <UniqueIdentifier>{7d72ee86-f72c-4625-a6e6-5adb110e49cd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="资源管理器\模型导入">
+      <UniqueIdentifier>{b3e1bbf6-71a0-46ef-a65a-1ab3209bd782}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="游戏输入控制\UI">
+      <UniqueIdentifier>{cd3154b3-828b-4e4d-9641-7b54bb618e14}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="游戏输入控制\按键控制">
+      <UniqueIdentifier>{7483f279-92a3-4485-87c6-ebd1970769cd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="游戏输入控制\全局设置">
+      <UniqueIdentifier>{57eacb44-52e3-4ba4-b76e-1232296d898b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\战斗场景">
+      <UniqueIdentifier>{36b209dd-deed-419b-8623-6751dd444deb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\战斗场景\地图">
+      <UniqueIdentifier>{5e888b11-bb53-4684-9e24-4b15c04f12a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\物理模拟">
+      <UniqueIdentifier>{8f797842-8feb-45a4-af19-37f3988324de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\灯光组件">
+      <UniqueIdentifier>{01caffcb-3f71-4d63-872f-a7b520907f3b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\摄像机组件">
+      <UniqueIdentifier>{6fdf03e8-c6c2-46a7-b11b-b52f8d00df91}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\玩家组件">
+      <UniqueIdentifier>{9b0973d3-e296-4df0-acb8-18d938b9a962}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\场景基类">
+      <UniqueIdentifier>{d9247c3f-f6b2-461e-b76a-1e47893e522f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\剧情场景">
+      <UniqueIdentifier>{c2e2871b-e189-43cd-bca4-37304401bf66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\mesh">
+      <UniqueIdentifier>{4551991a-48ff-4d3e-9dda-34fd230ef6e3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\纹理">
+      <UniqueIdentifier>{d6d395a3-511b-43d7-b443-d9ca5e80e7d5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\pass">
+      <UniqueIdentifier>{0d79efbd-7c35-4c77-8084-1ce5f89754ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\着色器">
+      <UniqueIdentifier>{5c503920-f8b7-460a-8a60-133d5a05afcc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\帧缓存">
+      <UniqueIdentifier>{65b972b9-5e2e-4b07-9c4d-eaec42e1863f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\UBO">
+      <UniqueIdentifier>{615df83c-68b8-4f1a-905b-ff8ac9e21e06}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\pass\具体的pass">
+      <UniqueIdentifier>{c5a604e5-0051-4b0d-bf41-3c1696be23cf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="渲染引擎\工具类">
+      <UniqueIdentifier>{0c87a9e1-ac25-4e80-819a-5eb9bbc31161}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="资源文件\后处理shader">
+      <UniqueIdentifier>{29994ff3-3230-456e-93d9-4357b5255090}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="ComRender.h">
+      <Filter>渲染引擎</Filter>
+    </ClInclude>
+    <ClInclude Include="ComTransform.h">
+      <Filter>渲染引擎</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugRenderSystem.h">
+      <Filter>工厂管理</Filter>
+    </ClInclude>
+    <ClInclude Include="EntityFactory.h">
+      <Filter>工厂管理</Filter>
+    </ClInclude>
+    <ClInclude Include="GameSettings.h">
+      <Filter>游戏输入控制</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>渲染引擎</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>渲染引擎</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneManager.h">
+      <Filter>场景管理</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceManager.h">
+      <Filter>资源管理器</Filter>
+    </ClInclude>
+    <ClInclude Include="Systems.h">
+      <Filter>工厂管理</Filter>
+    </ClInclude>
+    <ClInclude Include="stb_image.h">
+      <Filter>扩展库\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="tiny_gltf.h">
+      <Filter>扩展库\tinygltf</Filter>
+    </ClInclude>
+    <ClInclude Include="json.hpp">
+      <Filter>扩展库\tinygltf</Filter>
+    </ClInclude>
+    <ClInclude Include="tiny_obj_loader.h">
+      <Filter>扩展库\tinyobjloader</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryUtils.h">
+      <Filter>资源管理器\模型导入</Filter>
+    </ClInclude>
+    <ClInclude Include="ModelLoader.h">
+      <Filter>资源管理器\模型导入</Filter>
+    </ClInclude>
+    <ClInclude Include="SettingsUI.h">
+      <Filter>游戏输入控制\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="InputManager.h">
+      <Filter>游戏输入控制\按键控制</Filter>
+    </ClInclude>
+    <ClInclude Include="InputStruct.h">
+      <Filter>游戏输入控制\按键控制</Filter>
+    </ClInclude>
+    <ClInclude Include="Settings.h">
+      <Filter>游戏输入控制\全局设置</Filter>
+    </ClInclude>
+    <ClInclude Include="BattleScene.h">
+      <Filter>场景管理\战斗场景</Filter>
+    </ClInclude>
+    <ClInclude Include="Map.h">
+      <Filter>场景管理\战斗场景\地图</Filter>
+    </ClInclude>
+    <ClInclude Include="OBB.h">
+      <Filter>场景管理\物理模拟</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsSystem.h">
+      <Filter>场景管理\物理模拟</Filter>
+    </ClInclude>
+    <ClInclude Include="ComPhysics.h">
+      <Filter>场景管理\物理模拟</Filter>
+    </ClInclude>
+    <ClInclude Include="ComLight.h">
+      <Filter>场景管理\灯光组件</Filter>
+    </ClInclude>
+    <ClInclude Include="ComCamera.h">
+      <Filter>场景管理\摄像机组件</Filter>
+    </ClInclude>
+    <ClInclude Include="ComGameplay.h">
+      <Filter>场景管理\玩家组件</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>场景管理\场景基类</Filter>
+    </ClInclude>
+    <ClInclude Include="StoryScene.h">
+      <Filter>场景管理\剧情场景</Filter>
+    </ClInclude>
+    <ClInclude Include="IndexBuffer.h">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="mesh.h">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Vertex.h">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexArray.h">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexBuffer.h">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="VertexBufferLayout.h">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>渲染引擎\纹理</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>渲染引擎\着色器</Filter>
+    </ClInclude>
+    <ClInclude Include="Framebuffer.h">
+      <Filter>渲染引擎\帧缓存</Filter>
+    </ClInclude>
+    <ClInclude Include="UniformBuffer.h">
+      <Filter>渲染引擎\UBO</Filter>
+    </ClInclude>
+    <ClInclude Include="TextureSemantic.h">
+      <Filter>渲染引擎\纹理</Filter>
+    </ClInclude>
+    <ClInclude Include="OpaquePass3D.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="ShadowPass.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="TransparentPass3D.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPass.h">
+      <Filter>渲染引擎\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderPipeline.h">
+      <Filter>渲染引擎\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="OpaquePass2D.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="TransparentPass2D.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderTypes.h">
+      <Filter>渲染引擎</Filter>
+    </ClInclude>
+    <ClInclude Include="PostProcessPass.h">
+      <Filter>渲染引擎\pass</Filter>
+    </ClInclude>
+    <ClInclude Include="DrawUtils.h">
+      <Filter>渲染引擎\工具类</Filter>
+    </ClInclude>
+    <ClInclude Include="PipelineUtils.h">
+      <Filter>渲染引擎\工具类</Filter>
+    </ClInclude>
+    <ClInclude Include="FullscreenQuad.h">
+      <Filter>渲染引擎\工具类</Filter>
+    </ClInclude>
+    <ClInclude Include="HierarchyUtils.h">
+      <Filter>渲染引擎\工具类</Filter>
+    </ClInclude>
+    <ClInclude Include="SkyboxPass.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="EntityFactory.cpp">
+      <Filter>工厂管理</Filter>
+    </ClCompile>
+    <ClCompile Include="GameSettings.cpp">
+      <Filter>游戏输入控制</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>主程序</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>渲染引擎</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneManager.cpp">
+      <Filter>场景管理</Filter>
+    </ClCompile>
+    <ClCompile Include="ResourceManager.cpp">
+      <Filter>资源管理器</Filter>
+    </ClCompile>
+    <ClCompile Include="Systems.cpp">
+      <Filter>工厂管理</Filter>
+    </ClCompile>
+    <ClCompile Include="..\扩展库\imgui\imgui_demo.cpp">
+      <Filter>扩展库\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\扩展库\imgui\imgui_draw.cpp">
+      <Filter>扩展库\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\扩展库\imgui\imgui_impl_opengl3.cpp">
+      <Filter>扩展库\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\扩展库\imgui\imgui_impl_sdl3.cpp">
+      <Filter>扩展库\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\扩展库\imgui\imgui_tables.cpp">
+      <Filter>扩展库\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\扩展库\imgui\imgui_widgets.cpp">
+      <Filter>扩展库\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\扩展库\imgui\imgui.cpp">
+      <Filter>扩展库\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="stb_image.cpp">
+      <Filter>扩展库\stb_image</Filter>
+    </ClCompile>
+    <ClCompile Include="tiny_gltf.cpp">
+      <Filter>扩展库\tinygltf</Filter>
+    </ClCompile>
+    <ClCompile Include="tiny_obj_loader.cpp">
+      <Filter>扩展库\tinyobjloader</Filter>
+    </ClCompile>
+    <ClCompile Include="ModelLoader.cpp">
+      <Filter>资源管理器\模型导入</Filter>
+    </ClCompile>
+    <ClCompile Include="SettingsUI.cpp">
+      <Filter>游戏输入控制\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="InputManager.cpp">
+      <Filter>游戏输入控制\按键控制</Filter>
+    </ClCompile>
+    <ClCompile Include="Settings.cpp">
+      <Filter>游戏输入控制\全局设置</Filter>
+    </ClCompile>
+    <ClCompile Include="BattleScene.cpp">
+      <Filter>场景管理\战斗场景</Filter>
+    </ClCompile>
+    <ClCompile Include="Map.cpp">
+      <Filter>场景管理\战斗场景\地图</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsSystem.cpp">
+      <Filter>场景管理\物理模拟</Filter>
+    </ClCompile>
+    <ClCompile Include="ComLight.cpp">
+      <Filter>场景管理\灯光组件</Filter>
+    </ClCompile>
+    <ClCompile Include="StoryScene.cpp">
+      <Filter>场景管理\剧情场景</Filter>
+    </ClCompile>
+    <ClCompile Include="IndexBuffer.cpp">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="mesh.cpp">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexArray.cpp">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="VertexBuffer.cpp">
+      <Filter>渲染引擎\mesh</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>渲染引擎\纹理</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
+      <Filter>渲染引擎\着色器</Filter>
+    </ClCompile>
+    <ClCompile Include="Framebuffer.cpp">
+      <Filter>渲染引擎\帧缓存</Filter>
+    </ClCompile>
+    <ClCompile Include="UniformBuffer.cpp">
+      <Filter>渲染引擎\UBO</Filter>
+    </ClCompile>
+    <ClCompile Include="OpaquePass3D.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="ShadowPass.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="TransparentPass3D.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderPipeline.cpp">
+      <Filter>渲染引擎\pass</Filter>
+    </ClCompile>
+    <ClCompile Include="OpaquePass2D.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="TransparentPass2D.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="DrawUtils.cpp">
+      <Filter>渲染引擎\工具类</Filter>
+    </ClCompile>
+    <ClCompile Include="SkyboxPass.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Shader.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="Shader2.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="Shader3.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="Shader3D.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderLine.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderShadow.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderSkybox.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderBloomBlur.glsl">
+      <Filter>资源文件\后处理shader</Filter>
+    </None>
+    <None Include="ShaderBloomBright.glsl">
+      <Filter>资源文件\后处理shader</Filter>
+    </None>
+    <None Include="ShaderComposite.glsl">
+      <Filter>资源文件\后处理shader</Filter>
+    </None>
+    <None Include="ShaderPostProcess.glsl">
+      <Filter>资源文件\后处理shader</Filter>
+    </None>
+    <None Include="ShaderBloomUp.glsl">
+      <Filter>资源文件\后处理shader</Filter>
+    </None>
+    <None Include="ShaderSSAO.glsl">
+      <Filter>资源文件\后处理shader</Filter>
+    </None>
+    <None Include="ShaderSSAOBlur.glsl">
+      <Filter>资源文件\后处理shader</Filter>
+    </None>
+    <None Include="ShaderFXAA.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+  </ItemGroup>
+</Project>

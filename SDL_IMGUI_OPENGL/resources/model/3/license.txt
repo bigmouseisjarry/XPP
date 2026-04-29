@@ -1,0 +1,11 @@
+Model Information:
+* title:	八咫みるく
+* source:	https://sketchfab.com/3d-models/51dc47334dee42b9bb8e53ee07aa8006
+* author:	keiichiisozaki (https://sketchfab.com/keiichiisozaki)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "八咫みるく" (https://sketchfab.com/3d-models/51dc47334dee42b9bb8e53ee07aa8006) by keiichiisozaki (https://sketchfab.com/keiichiisozaki) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

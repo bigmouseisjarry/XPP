@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="SDL_IMGUI_OPENGL/SDL_IMGUI_OPENGL.vcxproj" Id="39cd52da-8c13-4eda-8e59-a2c2013dd513" />
+</Solution>
