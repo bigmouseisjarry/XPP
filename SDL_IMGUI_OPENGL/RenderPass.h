@@ -5,8 +5,7 @@
 #include "ComLight.h"
 #include "TextureSemantic.h"
 #include "RenderTypes.h"
-
-class Framebuffer;
+#include "ResourceManager.h"
 
 struct RenderContext
 {
@@ -45,12 +44,12 @@ public:
 
     virtual bool ManagesOwnFBO() const { return false; }
 
-    Framebuffer* GetOutputFBO() const { return m_OutputFBO; }
-    void SetOutputFBO(Framebuffer* fbo) { m_OutputFBO = fbo; }
+    FramebufferID GetOutputFBO() const { return m_OutputFBO; }
+    void SetOutputFBO(FramebufferID fbo) { m_OutputFBO = fbo; }
 
     // 渲染目标 FBO
-    void SetTargetFBO(Framebuffer* fbo) { m_TargetFBO = fbo; }
-    Framebuffer* GetTargetFBO() const { return m_TargetFBO; }
+    void SetTargetFBO(FramebufferID fbo) { m_TargetFBO = fbo; }
+    FramebufferID GetTargetFBO() const { return m_TargetFBO; }
 
     virtual void SetInputTexture(TextureSemantic semantic, unsigned int textureID) {}
 
@@ -62,8 +61,8 @@ public:
     const std::vector<DeclaredOutput>& GetDeclaredOutputs() const { return m_DeclaredOutputs; }
 
 private:
-    Framebuffer* m_TargetFBO = nullptr;
-    Framebuffer* m_OutputFBO = nullptr;
+    FramebufferID m_TargetFBO = {INVALID_ID};
+    FramebufferID m_OutputFBO = {INVALID_ID};
     std::vector<DeclaredInput> m_DeclaredInputs;
     std::vector<DeclaredOutput> m_DeclaredOutputs;
 };

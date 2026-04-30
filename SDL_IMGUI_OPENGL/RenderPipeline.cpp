@@ -9,7 +9,7 @@ void RenderPipeline::AddPass(std::unique_ptr<RenderPass> pass)
 void RenderPipeline::Execute(RenderContext& ctx)
 {
     PipelineState saved = PipelineUtils::CaptureGLState();
-    Framebuffer* prevOutputFBO = nullptr;
+    FramebufferID prevOutputFBO = {INVALID_ID};
 
     for (size_t i = 0; i < m_Passes.size(); ++i)
     {
@@ -27,11 +27,12 @@ void RenderPipeline::Execute(RenderContext& ctx)
 
         if (!pass->ManagesOwnFBO())
         {
-            Framebuffer* targetFBO = pass->GetTargetFBO();
+            
+            Framebuffer* targetFBO = ResourceManager::Get()->GetFramebufferMut(pass->GetTargetFBO());
             if (targetFBO)
             {
                 targetFBO->Bind();
-                if (targetFBO != prevOutputFBO)
+                if (pass->GetTargetFBO().value != prevOutputFBO.value)
                     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             }
             else
@@ -45,13 +46,13 @@ void RenderPipeline::Execute(RenderContext& ctx)
         pass->Execute(ctx);
         pass->Teardown(ctx);
 
-		Framebuffer* outputFBO = pass->GetOutputFBO();
-        if (outputFBO)
+		Framebuffer* outputFBO = ResourceManager::Get()->GetFramebufferMut(pass->GetOutputFBO());
+        if (pass->GetOutputFBO().value != INVALID_ID)
         {
 			for (auto& outputs : pass->GetDeclaredOutputs())
             {
                 //std::cout << pass->GetName() << " declares output: " << static_cast<int>(outputs.semantic) << " level " << outputs.level << " resolved texID: " << ResolveTextureID(outputs.semantic, outputs.level) << std::endl;
-				m_TexturePool[PoolKey{ outputs.semantic, outputs.level }] = TextureSource{ outputFBO, outputs.colorIndex, 0 };
+				m_TexturePool[PoolKey{ outputs.semantic, outputs.level }] = TextureSource{ pass->GetOutputFBO(), outputs.colorIndex, 0 };
             }
         }
 
@@ -70,10 +71,10 @@ const std::vector<std::unique_ptr<RenderPass>>& RenderPipeline::GetPasses() cons
 // 注册非 FBO 纹理
 void RenderPipeline::RegisterTexture(TextureSemantic semantic, unsigned int textureID, int level)
 {
-    m_TexturePool[PoolKey{ semantic,level }] = TextureSource{ nullptr, 0, textureID };
+    m_TexturePool[PoolKey{ semantic,level }] = TextureSource{ {INVALID_ID}, 0, textureID };
 }
 // 注册 FBO 纹理（colorIndex: -1 = depth attachment）
-void RenderPipeline::RegisterFBOTexture(TextureSemantic semantic, Framebuffer* fbo, int colorIndex, int level)
+void RenderPipeline::RegisterFBOTexture(TextureSemantic semantic, FramebufferID fbo, int colorIndex, int level)
 {
     m_TexturePool[PoolKey{ semantic,level }] = TextureSource{ fbo, colorIndex,0 };
 }
@@ -85,11 +86,11 @@ unsigned int RenderPipeline::ResolveTextureID(TextureSemantic semantic, int leve
 
     const auto& src = it->second;
     if (src.directTexID != 0) return src.directTexID;
-    if (src.fbo == nullptr) return 0;
+    if (src.fbo.value == INVALID_ID) return 0;
 
     if (src.colorIndex == -1)
-        return src.fbo->GetDepthGLTextureID();
+        return ResourceManager::Get()->GetFramebuffer(src.fbo)->GetDepthGLTextureID();
     else
-        return src.fbo->GetColorGLTextureID(src.colorIndex);
+        return ResourceManager::Get()->GetFramebuffer(src.fbo)->GetColorGLTextureID(src.colorIndex);
 }
 

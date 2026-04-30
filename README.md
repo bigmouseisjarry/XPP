@@ -279,7 +279,7 @@ TextureID / MeshID / ShaderID / FramebufferID 均为独立结构体，`static_as
 
 - [项目流程架构详解](docs/PROJECT_ARCHITECTURE.md) — 从启动到一帧渲染的完整数据流
 - [3D 渲染 Pass 深度解析](docs/RENDERING_PASS_GUIDE.md) — 每个 Pass 的理论基础与实现细节
-- [未来架构规划](docs/FUTURE_ARCHITECTURE.md) — 从技术验证到引擎化的演进路线
+- [周开发任务清单](docs/FUTURE_ARCHITECTURE.md)
 
 ## 许可
 

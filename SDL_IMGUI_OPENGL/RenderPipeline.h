@@ -4,7 +4,7 @@
 #include "RenderPass.h"
 
 struct TextureSource {
-    Framebuffer* fbo = nullptr;
+    FramebufferID fbo = {INVALID_ID};
     int colorIndex = 0;           // -1 = depth attachment
     unsigned int directTexID = 0; // 不走 FBO 的外部纹理（噪声等）
 };
@@ -31,7 +31,7 @@ public:
     const std::vector<std::unique_ptr<RenderPass>>& GetPasses() const;
 
     void RegisterTexture(TextureSemantic semantic, unsigned int textureID, int level = 0);
-    void RegisterFBOTexture(TextureSemantic semantic, Framebuffer* fbo, int colorIndex, int level = 0);
+    void RegisterFBOTexture(TextureSemantic semantic, FramebufferID fbo, int colorIndex, int level = 0);
 
 private:
     // 延迟解析：池中的 TextureSource → 实际的 GL texture ID

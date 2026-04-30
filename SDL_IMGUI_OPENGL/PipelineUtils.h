@@ -3,6 +3,9 @@
 
 namespace PipelineUtils
 {
+    // 缓存一下实现增量修改
+    static PipelineState s_CurrentState;
+
 	// 捕获当前 GL 状态到 PipelineState 结构
     static PipelineState CaptureGLState()
     {
@@ -44,29 +47,80 @@ namespace PipelineUtils
         s.viewport.width = vp[2];
         s.viewport.height = vp[3];
 
+        s_CurrentState = s;
+
         return s;
     }
 
 	static void ApplyPipelineState(const PipelineState& state) // TUDO: 改成增量式设置,只设置与当前状态不同的部分
     {
         // Blend
-        state.blend.enabled ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
+        if (state.blend.enabled != s_CurrentState.blend.enabled)
+        {
+            state.blend.enabled ? glEnable(GL_BLEND) : glDisable(GL_BLEND);
+            s_CurrentState.blend.enabled = state.blend.enabled;
+        }
         if (state.blend.enabled)
-            glBlendFunc(state.blend.srcFactor, state.blend.dstFactor);
+        {
+            if (state.blend.srcFactor != s_CurrentState.blend.srcFactor ||
+                state.blend.dstFactor != s_CurrentState.blend.dstFactor)
+            {
+                glBlendFunc(state.blend.srcFactor, state.blend.dstFactor);
+                s_CurrentState.blend.srcFactor = state.blend.srcFactor;
+                s_CurrentState.blend.dstFactor = state.blend.dstFactor;
+            }
+        }
 
         // Depth
-        state.depth.enabled ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
-        glDepthFunc(state.depth.func);
-        glDepthMask(state.depth.writeMask ? GL_TRUE : GL_FALSE);
+        if (state.depth.enabled != s_CurrentState.depth.enabled)
+        {
+            state.depth.enabled ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+            s_CurrentState.depth.enabled = state.depth.enabled;
+        }
+        if (state.depth.func != s_CurrentState.depth.func)
+        {
+            glDepthFunc(state.depth.func);
+            s_CurrentState.depth.func = state.depth.func;
+        }
+        if (state.depth.writeMask != s_CurrentState.depth.writeMask)
+        {
+            glDepthMask(state.depth.writeMask ? GL_TRUE : GL_FALSE);
+            s_CurrentState.depth.writeMask = state.depth.writeMask;
+        }
 
         // Cull
-        state.cull.enabled ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
-        glCullFace(state.cull.face);
-        glFrontFace(state.cull.winding);
+        if (state.cull.enabled != s_CurrentState.cull.enabled)
+        {
+            state.cull.enabled ? glEnable(GL_CULL_FACE) : glDisable(GL_CULL_FACE);
+            s_CurrentState.cull.enabled = state.cull.enabled;
+        }
+        if (state.cull.enabled)
+        {
+            if (state.cull.face != s_CurrentState.cull.face)
+            {
+                glCullFace(state.cull.face);
+                s_CurrentState.cull.face = state.cull.face;
+            }
+            if (state.cull.winding != s_CurrentState.cull.winding)
+            {
+                glFrontFace(state.cull.winding);
+                s_CurrentState.cull.winding = state.cull.winding;
+            }
+        }
 
         // Color mask
-        glColorMask(state.colorMask[0], state.colorMask[1],
-            state.colorMask[2], state.colorMask[3]);
+        if (state.colorMask[0] != s_CurrentState.colorMask[0] ||
+            state.colorMask[1] != s_CurrentState.colorMask[1] ||
+            state.colorMask[2] != s_CurrentState.colorMask[2] ||
+            state.colorMask[3] != s_CurrentState.colorMask[3])
+        {
+            glColorMask(state.colorMask[0], state.colorMask[1],
+                state.colorMask[2], state.colorMask[3]);
+            s_CurrentState.colorMask[0] = state.colorMask[0];
+            s_CurrentState.colorMask[1] = state.colorMask[1];
+            s_CurrentState.colorMask[2] = state.colorMask[2];
+            s_CurrentState.colorMask[3] = state.colorMask[3];
+        }
     }
 
     static void RestoreGLState(const PipelineState& saved)
@@ -74,6 +128,6 @@ namespace PipelineUtils
         ApplyPipelineState(saved);
         glViewport(saved.viewport.x, saved.viewport.y,
             saved.viewport.width, saved.viewport.height);
+        s_CurrentState = saved;
     }
-
 }

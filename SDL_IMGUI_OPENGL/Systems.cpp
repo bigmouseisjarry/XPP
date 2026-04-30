@@ -151,6 +151,17 @@ namespace AssistSystem {
 
         physics.velocity = vel;
     }
+
+    inline bool FrustumTestOBB(const glm::vec4 planes[6], const OBB& obb)
+    {
+        float radius = glm::length(obb.halfExtents);
+        for (int i = 0; i < 6; i++) {
+            float dist = glm::dot(glm::vec3(planes[i]), obb.center) + planes[i].w;
+            if (dist < -radius)
+                return false;  // 完全在一个平面外侧 → 剔除
+        }
+        return true;
+    }
 }
 
 void CameraSystem::Update(entt::registry& registry)
@@ -174,6 +185,7 @@ void CameraSystem::Update(entt::registry& registry)
             // 从 Transform3D 读 position 计算 view matrix
             glm::mat4 view = glm::lookAt(transform.position, transform.position + cam.front, cam.up);
             cam.projView = cam.projection * view;
+			cam.ExtractPlanes();  // 从 projView 提取裁剪平面
             cam.isDirty = false;
         }
     }
@@ -201,6 +213,14 @@ void RenderSubmitSystem::SubmitCameras(entt::registry& registry)
 
 void RenderSubmitSystem::SubmitEntities(entt::registry& registry)
 {
+    const Camera3DComponent* cam = nullptr;
+    {
+        auto camView = registry.view<Camera3DComponent>();
+        for (auto [e, c] : camView.each()) {
+            if (c.enabled) { cam = &c; break; }
+        }
+    }
+
     // 2D 可见实体
     auto view2D = registry.view<Visible2DComponent, Transform2DComponent>();
     for (auto [entity, visible, transform] : view2D.each())
@@ -216,6 +236,9 @@ void RenderSubmitSystem::SubmitEntities(entt::registry& registry)
     for (auto [entity, visible, transform] : view3D.each())
     {
         if (!visible.isVisible) continue;
+        if (auto* phys = registry.try_get<Physics3DComponent>(entity)) {
+            if (! AssistSystem::FrustumTestOBB(cam->frustumPlanes, phys->worldOBB)) continue;
+        }
         Renderer::Get()->SubmitRenderUnits(
             visible.mesh, visible.material.get(), transform.GetWorldMatrix(registry), visible.renderLayer);
     }
@@ -224,6 +247,9 @@ void RenderSubmitSystem::SubmitEntities(entt::registry& registry)
     auto viewModel = registry.view<Model3DComponent, Transform3DComponent>();
     for (auto [entity, model, transform] : viewModel.each())
     {
+        if (auto* phys = registry.try_get<Physics3DComponent>(entity)) {
+            if (!AssistSystem::FrustumTestOBB(cam->frustumPlanes, phys->worldOBB)) continue;
+        }
         for (const auto& sub : model.subMeshes)
         {
             Renderer::Get()->SubmitRenderUnits(

@@ -300,6 +300,7 @@ void PhysicsSystem::__RebuildGrid3D(entt::registry& registry,std::unordered_map<
         OBB obb = ComputeOBB(transform.position, transform.scale,
             transform.rotation, physics.colliderSize, physics.colliderOffset);
         outOBBs[entity] = obb;
+		physics.worldOBB = obb;  // TUDO: 这里直接把 OBB 存在 Physics3DComponent 里，后续可以优化为只存储 AABB 或者分离出一个组件来存储碰撞体信息
         __InsertToGrid3D(entity, obb);
     }
 }

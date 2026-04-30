@@ -53,6 +53,7 @@ struct Camera3DComponent {
 
     mutable bool isDirty = true;
     mutable glm::mat4 projView = glm::mat4(1.0f);
+    mutable glm::vec4 frustumPlanes[6];             // 视裁切平面
 
     bool enabled = true;
     std::string name;
@@ -111,6 +112,28 @@ struct Camera3DComponent {
     // 返回应写入 Transform3DComponent.position 的值
     glm::vec3 CalcPosition() const {
         return orbitTarget - front * orbitDistance;
+    }
+
+	// 提取projview矩阵中的6个视裁切平面
+    void ExtractPlanes() const {
+        const glm::mat4& m = projView;
+        // 左平面 row3 + row0
+        frustumPlanes[0] = glm::vec4(m[0][3] + m[0][0], m[1][3] + m[1][0], m[2][3] + m[2][0], m[3][3] + m[3][0]);
+        // 右平面 row3 - row0
+        frustumPlanes[1] = glm::vec4(m[0][3] - m[0][0], m[1][3] - m[1][0], m[2][3] - m[2][0], m[3][3] - m[3][0]);
+        // 远平面 row3 - row2
+        frustumPlanes[2] = glm::vec4(m[0][3] - m[0][2], m[1][3] - m[1][2], m[2][3] - m[2][2], m[3][3] - m[3][2]);
+		// 近平⾯ row3 + row2
+        frustumPlanes[3] = glm::vec4(m[0][3] + m[0][2], m[1][3] + m[1][2], m[2][3] + m[2][2], m[3][3] + m[3][2]);
+		// 上平面 row3 - row1
+        frustumPlanes[4] = glm::vec4(m[0][3] - m[0][1], m[1][3] - m[1][1], m[2][3] - m[2][1], m[3][3] - m[3][1]);
+		// 下平面 row3 + row1
+        frustumPlanes[5] = glm::vec4(m[0][3] + m[0][1], m[1][3] + m[1][1], m[2][3] + m[2][1], m[3][3] + m[3][1]);
+        // 归一化
+        for (int i = 0; i < 6; i++) {
+            float len = glm::length(glm::vec3(frustumPlanes[i]));
+            frustumPlanes[i] /= len;
+        }
     }
 
     void UpdatePosition() {

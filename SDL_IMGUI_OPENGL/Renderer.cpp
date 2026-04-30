@@ -67,8 +67,35 @@ void Renderer::InitPipeline(bool has3D)
         sceneSpec.colorAttachments.push_back({ AttachmentFormat::RGBA16F });  // [1] 世界空间法线
         sceneSpec.depthAttachment = { AttachmentFormat::Depth24 };            // 可采样深度纹理
         FramebufferID sceneFBOID = ResourceManager::Get()->CreateFramebuffer("Scene3D", sceneSpec);
-        Framebuffer* sceneFBO = ResourceManager::Get()->GetFramebufferMut(sceneFBOID);
         RegisterIntermediateFBO(sceneFBOID);
+
+        // ============ 基础渲染 Pass ============
+
+        // Depth 注册
+        m_Pipeline->RegisterFBOTexture(TextureSemantic::Depth, sceneFBOID, -1);
+        // depth 是隐式输出，color 是显式输出
+
+        // ShadowPass：自管理 FBO
+        m_Pipeline->AddPass(std::make_unique<ShadowPass>());
+
+        auto skyboxPass = std::make_unique<SkyboxPass>();
+        skyboxPass->SetTargetFBO(sceneFBOID);
+        skyboxPass->SetOutputFBO(sceneFBOID);
+		skyboxPass->DeclareOutput(TextureSemantic::SceneColor, 0);
+        m_SkyboxTexID = ResourceManager::Get()->GetTextureID("resources/skybox/moonless_golf_4k.hdr");
+        m_Pipeline->AddPass(std::move(skyboxPass));
+
+        auto opaque3D = std::make_unique<OpaquePass3D>();
+        opaque3D->SetTargetFBO(sceneFBOID);
+        opaque3D->SetOutputFBO(sceneFBOID);
+		opaque3D->DeclareOutput(TextureSemantic::SceneColor, 0);
+        m_Pipeline->AddPass(std::move(opaque3D));
+
+        auto trans3D = std::make_unique<TransparentPass3D>();
+        trans3D->SetTargetFBO(sceneFBOID);
+        trans3D->SetOutputFBO(sceneFBOID);
+        trans3D->DeclareOutput(TextureSemantic::SceneColor, 0);
+        m_Pipeline->AddPass(std::move(trans3D));
 
         // 创建FXAA
         FramebufferSpec fxaaSpec;
@@ -78,81 +105,53 @@ void Renderer::InitPipeline(bool has3D)
         RegisterIntermediateFBO(fxaaFBOID, 1.0f, 1.0f);
         Framebuffer* fxaaFBO = ResourceManager::Get()->GetFramebufferMut(fxaaFBOID);
 
-        // ============ 基础渲染 Pass ============
-
-        // Depth 注册
-        m_Pipeline->RegisterFBOTexture(TextureSemantic::Depth, sceneFBO, -1);
-        // depth 是隐式输出，color 是显式输出
-
-        // ShadowPass：自管理 FBO
-        m_Pipeline->AddPass(std::make_unique<ShadowPass>());
-
-        auto skyboxPass = std::make_unique<SkyboxPass>();
-        skyboxPass->SetTargetFBO(sceneFBO);
-        skyboxPass->SetOutputFBO(sceneFBO);
-		skyboxPass->DeclareOutput(TextureSemantic::SceneColor, 0);
-        m_SkyboxTexID = ResourceManager::Get()->GetTextureID("resources/skybox/moonless_golf_4k.hdr");
-        m_Pipeline->AddPass(std::move(skyboxPass));
-
-        auto opaque3D = std::make_unique<OpaquePass3D>();
-        opaque3D->SetTargetFBO(sceneFBO);
-        opaque3D->SetOutputFBO(sceneFBO);
-		opaque3D->DeclareOutput(TextureSemantic::SceneColor, 0);
-        m_Pipeline->AddPass(std::move(opaque3D));
-
-        auto trans3D = std::make_unique<TransparentPass3D>();
-        trans3D->SetTargetFBO(sceneFBO);
-        trans3D->SetOutputFBO(sceneFBO);
-        trans3D->DeclareOutput(TextureSemantic::SceneColor, 0);
-        m_Pipeline->AddPass(std::move(trans3D));
-
         //ShaderID fxaaShaderID = ResourceManager::Get()->GetShaderID("ShaderFXAA.glsl");
         //auto fxaaPass = std::make_unique<PostProcessPass>("FXAA", fxaaShaderID);
-        //fxaaPass->SetTargetFBO(fxaaFBO);
-        //fxaaPass->SetOutputFBO(fxaaFBO);
+        //fxaaPass->SetTargetFBO(fxaaFBOID);
+        //fxaaPass->SetOutputFBO(fxaaFBOID);
         //fxaaPass->DeclareInput(TextureSemantic::SceneColor);
         //fxaaPass->DeclareOutput(TextureSemantic::SceneColor, 0);  
         //m_Pipeline->AddPass(std::move(fxaaPass));
 
-		auto PostProcess = std::make_unique<PostProcessPass>("PostProcess", ResourceManager::Get()->GetShaderID("ShaderPostProcess.glsl"));
-		PostProcess->SetTargetFBO(nullptr);
-        PostProcess->DeclareInput(TextureSemantic::SceneColor, 0);
-		m_Pipeline->AddPass(std::move(PostProcess));
+		//auto PostProcess = std::make_unique<PostProcessPass>("PostProcess", ResourceManager::Get()->GetShaderID("ShaderPostProcess.glsl"));
+		//PostProcess->SetTargetFBO(nullptr);
+        //PostProcess->DeclareInput(TextureSemantic::SceneColor, 0);
+		//m_Pipeline->AddPass(std::move(PostProcess));
 
 
         // ============ Bloom FBO ============
 
         // 辅助 lambda：创建指定缩放比例的 Bloom FBO
-        auto createBloomFBO = [&](const std::string& name, float scale) -> Framebuffer* {
+        auto createBloomFBOID = [&](const std::string& name, float scale) -> FramebufferID {
             FramebufferSpec spec;
             spec.width = std::max(1, (int)(1024 * scale));
             spec.height = std::max(1, (int)(768 * scale));
             spec.colorAttachments.push_back({ AttachmentFormat::RGBA16F });
             FramebufferID fboID = ResourceManager::Get()->CreateFramebuffer(name, spec);
             RegisterIntermediateFBO(fboID, scale, scale);
-            return ResourceManager::Get()->GetFramebufferMut(fboID);
+            return fboID;
             };
 
         // 亮部提取
-        Framebuffer* bloomBrightFBO = createBloomFBO("BloomBright", 0.5f);
+        FramebufferID bloomBrightFBOID = createBloomFBOID("BloomBright", 0.5f);
         // Level 0 ping-pong (1/2 分辨率)
-        Framebuffer* bloomPing0 = createBloomFBO("BloomPing0", 0.5f);
-        Framebuffer* bloomPong0 = createBloomFBO("BloomPong0", 0.5f);
+        FramebufferID bloomPing0ID = createBloomFBOID("BloomPing0", 0.5f);
+        FramebufferID bloomPong0ID = createBloomFBOID("BloomPong0", 0.5f);
         // Level 1 ping-pong (1/4 分辨率)
-        Framebuffer* bloomPing1 = createBloomFBO("BloomPing1", 0.25f);
-        Framebuffer* bloomPong1 = createBloomFBO("BloomPong1", 0.25f);
+        FramebufferID bloomPing1ID = createBloomFBOID("BloomPing1", 0.25f);
+        FramebufferID bloomPong1ID = createBloomFBOID("BloomPong1", 0.25f);
         // Level 2 ping-pong (1/8 分辨率)
-        Framebuffer* bloomPing2 = createBloomFBO("BloomPing2", 0.125f);
-        Framebuffer* bloomPong2 = createBloomFBO("BloomPong2", 0.125f);
+        FramebufferID bloomPing2ID = createBloomFBOID("BloomPing2", 0.125f);
+        FramebufferID bloomPong2ID = createBloomFBOID("BloomPong2", 0.125f);
         // Level 3 ping-pong (1/16 分辨率)
-        Framebuffer* bloomPing3 = createBloomFBO("BloomPing3", 0.0625f);
-        Framebuffer* bloomPong3 = createBloomFBO("BloomPong3", 0.0625f);
+        FramebufferID bloomPing3ID = createBloomFBOID("BloomPing3", 0.0625f);
+        FramebufferID bloomPong3ID = createBloomFBOID("BloomPong3", 0.0625f);
         // 上采样中间结果
-        Framebuffer* bloomUp3FBO = createBloomFBO("BloomUp3", 0.125f);
-        Framebuffer* bloomUp2FBO = createBloomFBO("BloomUp2", 0.25f);
-        Framebuffer* bloomUp1FBO = createBloomFBO("BloomUp1", 0.5f);
+        FramebufferID bloomUp3FBOID = createBloomFBOID("BloomUp3", 0.125f);
+        FramebufferID bloomUp2FBOID = createBloomFBOID("BloomUp2", 0.25f);
+        FramebufferID bloomUp1FBOID = createBloomFBOID("BloomUp1", 0.5f);
         // 最终 Bloom 结果（全分辨率）
-        Framebuffer* bloomResultFBO = createBloomFBO("BloomResult", 1.0f);
+        FramebufferID bloomResultFBOID = createBloomFBOID("BloomResult", 1.0f);
 
         // Shader IDs
         ShaderID bloomBrightShader = ResourceManager::Get()->GetShaderID("ShaderBloomBright.glsl");
@@ -163,8 +162,8 @@ void Renderer::InitPipeline(bool has3D)
 
         // 亮部提取：读取 Scene3D，提取亮度超过阈值的像素
         auto bloomBrightPass = std::make_unique<PostProcessPass>("BloomBright", bloomBrightShader);
-        bloomBrightPass->SetTargetFBO(bloomBrightFBO);
-        bloomBrightPass->SetOutputFBO(bloomBrightFBO);
+        bloomBrightPass->SetTargetFBO(bloomBrightFBOID);
+        bloomBrightPass->SetOutputFBO(bloomBrightFBOID);
         bloomBrightPass->DeclareInput(TextureSemantic::SceneColor);
         bloomBrightPass->DeclareOutput(TextureSemantic::BloomBright, 0);
         bloomBrightPass->SetSetupCallback([](const Shader* shader) {
@@ -174,12 +173,12 @@ void Renderer::InitPipeline(bool has3D)
 
         // 4 级高斯模糊（每级水平 + 垂直，ping-pong）
         // Ping = V-blur 输出，Pong = H-blur 输出
-        struct BlurLevel { Framebuffer* ping; Framebuffer* pong; };
+        struct BlurLevel { FramebufferID ping; FramebufferID pong; };
         BlurLevel blurLevels[4] = {
-            { bloomPing0, bloomPong0 },
-            { bloomPing1, bloomPong1 },
-            { bloomPing2, bloomPong2 },
-            { bloomPing3, bloomPong3 },
+            { bloomPing0ID, bloomPong0ID },
+            { bloomPing1ID, bloomPong1ID },
+            { bloomPing2ID, bloomPong2ID },
+            { bloomPing3ID, bloomPong3ID },
         };
 
         for (int i = 0; i < 4; i++)
@@ -214,8 +213,8 @@ void Renderer::InitPipeline(bool has3D)
 
         // BloomUp3：上采样 1/16→1/8，叠加 level 2 blur
         auto up3 = std::make_unique<PostProcessPass>("BloomUp3", bloomUpShader);
-        up3->SetTargetFBO(bloomUp3FBO);
-        up3->SetOutputFBO(bloomUp3FBO);
+        up3->SetTargetFBO(bloomUp3FBOID);
+        up3->SetOutputFBO(bloomUp3FBOID);
         up3->DeclareInput(TextureSemantic::BloomUp, 0);              // 从 BlurV3
         up3->DeclareInput(TextureSemantic::BloomBright, 3);          // BlurV2 的 level=3
         up3->DeclareOutput(TextureSemantic::BloomUp, 0);
@@ -223,8 +222,8 @@ void Renderer::InitPipeline(bool has3D)
 
         // BloomUp2：上采样 1/8→1/4，叠加 level 1 blur
         auto up2 = std::make_unique<PostProcessPass>("BloomUp2", bloomUpShader);
-        up2->SetTargetFBO(bloomUp2FBO);
-        up2->SetOutputFBO(bloomUp2FBO);
+        up2->SetTargetFBO(bloomUp2FBOID);
+        up2->SetOutputFBO(bloomUp2FBOID);
         up2->DeclareInput(TextureSemantic::BloomUp, 0);
         up2->DeclareInput(TextureSemantic::BloomBright, 2);          // BlurV1 的 level=2
         up2->DeclareOutput(TextureSemantic::BloomUp, 0);
@@ -232,8 +231,8 @@ void Renderer::InitPipeline(bool has3D)
 
         // BloomUp1：上采样 1/4→1/2，叠加 level 0 blur
         auto up1 = std::make_unique<PostProcessPass>("BloomUp1", bloomUpShader);
-        up1->SetTargetFBO(bloomUp1FBO);
-        up1->SetOutputFBO(bloomUp1FBO);
+        up1->SetTargetFBO(bloomUp1FBOID);
+        up1->SetOutputFBO(bloomUp1FBOID);
         up1->DeclareInput(TextureSemantic::BloomUp, 0);
         up1->DeclareInput(TextureSemantic::BloomBright, 1);          // BlurV0 的 level=1
         up1->DeclareOutput(TextureSemantic::BloomUp, 0);
@@ -241,8 +240,8 @@ void Renderer::InitPipeline(bool has3D)
 
         // BloomUp0：上采样 1/2→全分辨率，产出最终 Bloom
         auto up0 = std::make_unique<PostProcessPass>("BloomUp0", bloomUpShader);
-        up0->SetTargetFBO(bloomResultFBO);
-        up0->SetOutputFBO(bloomResultFBO);
+        up0->SetTargetFBO(bloomResultFBOID);
+        up0->SetOutputFBO(bloomResultFBOID);
         up0->DeclareInput(TextureSemantic::BloomUp, 0);
         up0->DeclareInput(TextureSemantic::BloomBright, 1);          // 也用 level=1（最近一级 blur）
         up0->DeclareOutput(TextureSemantic::Bloom, 0);
@@ -250,8 +249,8 @@ void Renderer::InitPipeline(bool has3D)
 
         // ============ SSAO FBO ============
 
-        Framebuffer* ssaoFBO = createBloomFBO("SSAO", 1.0f);
-        Framebuffer* ssaoBlurFBO = createBloomFBO("SSAOBlur", 1.0f);
+        FramebufferID ssaoFBOID = createBloomFBOID("SSAO", 1.0f);
+        FramebufferID ssaoBlurFBOID = createBloomFBOID("SSAOBlur", 1.0f);
 
         // 生成 SSAO 采样核（64 个半球采样点）
         std::vector<glm::vec3> ssaoKernel(64);
@@ -289,8 +288,8 @@ void Renderer::InitPipeline(bool has3D)
         // ============ SSAO Pass ============
 
         auto ssaoPass = std::make_unique<PostProcessPass>("SSAO", ssaoShader);
-        ssaoPass->SetTargetFBO(ssaoFBO);
-        ssaoPass->SetOutputFBO(ssaoFBO);
+        ssaoPass->SetTargetFBO(ssaoFBOID);
+        ssaoPass->SetOutputFBO(ssaoFBOID);
         ssaoPass->DeclareInput(TextureSemantic::Depth);
         ssaoPass->DeclareOutput(TextureSemantic::SSAO, 0);
         ssaoPass->SetSetupCallback([noiseTex, this](const Shader* shader) {
@@ -310,8 +309,8 @@ void Renderer::InitPipeline(bool has3D)
 
         // SSAO模糊
         auto ssaoBlurPass = std::make_unique<PostProcessPass>("SSAOBlur", ssaoBlurShader);
-        ssaoBlurPass->SetTargetFBO(ssaoBlurFBO);
-        ssaoBlurPass->SetOutputFBO(ssaoBlurFBO);
+        ssaoBlurPass->SetTargetFBO(ssaoBlurFBOID);
+        ssaoBlurPass->SetOutputFBO(ssaoBlurFBOID);
         ssaoBlurPass->DeclareInput(TextureSemantic::SSAO);
         ssaoBlurPass->DeclareOutput(TextureSemantic::SSAO, 0);
         m_Pipeline->AddPass(std::move(ssaoBlurPass));
@@ -321,7 +320,7 @@ void Renderer::InitPipeline(bool has3D)
 
         ShaderID compositeShaderID = ResourceManager::Get()->GetShaderID("ShaderComposite.glsl");
         auto compositePass = std::make_unique<PostProcessPass>("Composite", compositeShaderID);
-        compositePass->SetTargetFBO(nullptr);
+        compositePass->SetTargetFBO({INVALID_ID});
         compositePass->DeclareInput(TextureSemantic::SceneColor);
         compositePass->DeclareInput(TextureSemantic::Bloom);
         compositePass->DeclareInput(TextureSemantic::SSAO);

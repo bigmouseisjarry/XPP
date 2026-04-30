@@ -136,7 +136,6 @@ namespace DrawUtils
                     const Texture* tex = ResourceManager::Get()->GetTexture(texID);
 					// std::cout << TextureSlot::GetSamplerName(semantic) << ": " << tex->GetFilePath() << std::endl;
                     if (tex) tex->Bind(slot);
-
                     curShader->Set1i(info.name, slot);
                 }
             }

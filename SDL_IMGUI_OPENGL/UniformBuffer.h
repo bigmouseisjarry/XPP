@@ -7,7 +7,10 @@
 class UniformBuffer
 {
 private:
-    unsigned int m_RendererID = 0;
+    static constexpr int BUFFER_COUNT = 3;
+    unsigned int m_Buffers[BUFFER_COUNT]{};
+    mutable int m_CurrentBuffer = 0;
+
     unsigned int m_BindingPoint;
 
     static const std::unordered_map<std::string, unsigned int> s_BlockBindings;
@@ -20,12 +23,9 @@ public:
     UniformBuffer(const UniformBuffer&) = delete;
     UniformBuffer& operator=(const UniformBuffer&) = delete;
 
-    void Bind() const;
-    void Unbind() const;
     void SetData(const void* data, unsigned int size) const;
     void SetSubData(const void* data, unsigned int offset, unsigned int size) const;
 
-    unsigned int GetBindingPoint() const { return m_BindingPoint; }
 
     // 根据 block 名查找对应的 binding point，供 Shader 自动绑定时调用
     static unsigned int GetBindingPoint(const std::string& blockName);
