@@ -1,7 +1,5 @@
 # 3D 渲染 Pass 深度解析
 
-本文档面向面试中的图形学深度提问，逐 Pass 分析理论基础、实现细节和设计决策。
-
 ---
 
 ## 1. 渲染方程与 PBR 基础
@@ -16,7 +14,7 @@ $$L_o(p, \omega_o) = L_e(p, \omega_o) + \int_{\Omega} f_r(p, \omega_i, \omega_o)
 - $L_i$：入射 radiance（光源 + IBL 间接光）
 - $(n \cdot \omega_i)$：Lambert 余弦项
 
-**本引擎的实现范围**：$L_i$ 目前仅包含直接光源（8盏点光/方向光），IBL 间接光为未来计划。
+**目前的实现范围**：$L_i$ 目前仅包含直接光源（8盏点光/方向光），IBL 间接光为未来计划。
 
 ### Cook-Torrance BRDF
 
@@ -40,7 +38,6 @@ $$D = \frac{\alpha^2}{\pi \cdot ((n \cdot h)^2 \cdot (\alpha^2 - 1) + 1)^2}$$
 
 **为什么选 GGX**：
 - 相比 Beckmann，GGX 的高光拖尾更长（heavy-tailed），更接近真实材质
-- 业界标准选择（UE4/Unity 均使用 GGX）
 
 #### 几何遮蔽函数 G (Smith)
 
@@ -152,13 +149,6 @@ lightProj = Ortho(aabb.min.x, aabb.max.x,
                   aabb.min.z - nearMargin,
                   aabb.max.z + farMargin)
 ```
-
-**面试可能追问**：
-- Q: 为什么不用 CSM (Cascaded Shadow Maps)？
-- A: 当前场景规模较小（展厅级别），单一 shadow map + 视锥体拟合已覆盖。CSM 适合大范围户外场景，实现复杂度高，在项目后期可作为优化方向。
-- Q: PCF 5×5 的性能？
-- A: 25 次纹理采样，但在 GPU 上高度并行，且 `sampler2DArrayShadow` 的硬件 PCF 部分由 GPU 纹理单元加速。实测对帧率影响 <5%。
-
 ---
 
 ### Pass 2: SkyboxPass
@@ -447,44 +437,11 @@ color = pow(color, vec3(0.4545));
 | Reinhard | $x/(x+1)$ | 简单、保留暗部、亮部自然压缩 |
 | ACES (大致) | 多项式拟合 | 电影感调色、亮部偏蓝 |
 | Uncharted 2 | 多项式拟合 | 风格化、高对比度 |
-| **本项目采用** | Reinhard | 简单标准，适合展示 PBR 材质本色 |
+| **项目采用** | Reinhard | 简单标准，适合展示 PBR 材质本色 |
 
 ---
 
-## 4. 性能分析
-
-### 各 Pass GPU 时间估算 (以 1920×1080 为准)
-
-| Pass | 主要开销 | 预计时间 |
-|------|---------|---------|
-| ShadowPass | N×8层深度写入，2048² | ~2-3ms |
-| SkyboxPass | 全屏立方体 + HDR 采样 | ~0.2ms |
-| OpaquePass3D | PBR BRDF + 逐光源循环 + PCF 25采样 | ~3-5ms |
-| TransparentPass3D | 同上 + 混合 | ~0.5ms |
-| Bloom (13 Pass) | 多数低分辨率操作 | ~1-2ms |
-| SSAO + Blur | 64 采样/像素 + 25 采样/像素 | ~2-3ms |
-| Composite | 简单叠加 + pow | ~0.1ms |
-| **总计** | | **~10-15ms (66-100 FPS)** |
-
-### 当前瓶颈
-
-1. **OpaquePass3D 的逐光源循环**：每个 fragment 遍历 8 盏灯，即使灯光不在范围内。优化方向：Tile-based light culling（分块剔除）、clustered forward rendering（3D 网格剔除）。
-2. **ShadowPass**：每个模型渲染 8 次（geometry shader 展开）。优化方向：CSM（减少光源数但增加级联）、或限制只有关键光源投射阴影。
-3. **SSAO 每像素 64 次采样**：可降为 32 或 16 配合时间累积（TAA）。
-
-### 与商业引擎的性能对比思路
-
-| 维度 | 本项目 | UE5/Unity |
-|------|--------|-----------|
-| 渲染方式 | Forward+ | Deferred/Forward+ |
-| 阴影 | 单一 Shadow Array + PCF | CSM + Ray Traced Shadow |
-| AO | SSAO (屏幕空间) | SSAO + GTAO + RTAO |
-| 全局光照 | 无 | Lumen/Baked Lightmap |
-| Draw Call 优化 | 手动排序 | GPU Driven + Visibility Buffer |
-
----
-
-## 5. 着色器文件速查
+## 4. 着色器文件速查
 
 | 着色器 | 文件名 | 核心功能 |
 |--------|--------|---------|
