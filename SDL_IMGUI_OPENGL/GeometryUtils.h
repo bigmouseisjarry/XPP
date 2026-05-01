@@ -3,6 +3,7 @@
 #include <vector>
 #include <gtc/matrix_transform.hpp>
 #include "tiny_gltf.h"
+#include "ResourceManager.h"
 
 namespace GeometryUtils
 {
@@ -109,8 +110,7 @@ namespace GeometryUtils
     }
 
     // 从 accessor 获取数据指针和步长
-    static const unsigned char* GetAccessorPtr(
-        const tinygltf::Model& model, int accessorIdx, int& stride, size_t& count)
+    static const unsigned char* GetAccessorPtr(const tinygltf::Model& model, int accessorIdx, int& stride, size_t& count)
     {
         const auto& acc = model.accessors[accessorIdx];
         const auto& bv = model.bufferViews[acc.bufferView];
@@ -121,6 +121,61 @@ namespace GeometryUtils
         stride = (accStride > 0) ? accStride
             : GetComponentSize(acc.componentType) * GetTypeComponents(acc.type);
         return buf.data.data() + bv.byteOffset + acc.byteOffset;
+    }
+
+    // TUDO: 可以先检查 acc.sparse.isSparse，如果为 false 就直接返回指向原始 buffer 的 span
+    static std::vector<unsigned char> GetAccessorData( const tinygltf::Model& model, int accessorIdx, int& stride, size_t& count)
+    {
+        const auto& acc = model.accessors[accessorIdx];
+        const auto& bv = model.bufferViews[acc.bufferView];
+        const auto& buf = model.buffers[bv.buffer];
+        count = acc.count;
+
+        int accStride = acc.ByteStride(bv);
+        stride = (accStride > 0) ? accStride
+            : GetComponentSize(acc.componentType) * GetTypeComponents(acc.type);
+
+        size_t totalBytes = count * stride;
+        std::vector<unsigned char> result(totalBytes);
+
+        // 复制 dense 数据
+        const unsigned char* src = buf.data.data() + bv.byteOffset + acc.byteOffset;
+        memcpy(result.data(), src, totalBytes);
+
+        // 应用 sparse overlay
+        if (acc.sparse.isSparse)
+        {
+            const auto& sparse = acc.sparse;
+
+            // sparse indices
+            const auto& idxBV = model.bufferViews[sparse.indices.bufferView];
+            const auto& idxBuf = model.buffers[idxBV.buffer];
+            const unsigned char* idxData = idxBuf.data.data()
+                + idxBV.byteOffset + sparse.indices.byteOffset;
+
+            // sparse values
+            const auto& valBV = model.bufferViews[sparse.values.bufferView];
+            const auto& valBuf = model.buffers[valBV.buffer];
+            const unsigned char* valData = valBuf.data.data()
+                + valBV.byteOffset + sparse.values.byteOffset;
+
+            for (size_t i = 0; i < sparse.count; i++)
+            {
+                size_t targetIdx = 0;
+                switch (sparse.indices.componentType)
+                {
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                    targetIdx = idxData[i]; break;
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+                    targetIdx = reinterpret_cast<const uint16_t*>(idxData)[i]; break;
+                case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+                    targetIdx = reinterpret_cast<const uint32_t*>(idxData)[i]; break;
+                }
+                memcpy(result.data() + targetIdx * stride,
+                    valData + i * stride, stride);
+            }
+        }
+        return result;
     }
 
     // 根据位置、UV 和索引计算切线和副切线（Lengyel 算法）
@@ -181,6 +236,130 @@ namespace GeometryUtils
 				vertices[i].Tangent = glm::vec4(T, handedness);
             }
         }
+    }
+
+    static SamplerInfo GetSamplerInfo(const tinygltf::Model& model,int texIndex, bool sRGB)
+    {
+        if (texIndex < 0) return {};
+        const auto& gltfTex = model.textures[texIndex];
+        if (gltfTex.sampler < 0) 
+        {
+            SamplerInfo info;
+            info.sRGB = sRGB;
+            info.valid = true;
+            return info;
+        }
+        const auto& s = model.samplers[gltfTex.sampler];
+        SamplerInfo info;
+        info.valid = true;
+        info.sRGB = sRGB;
+        if (s.magFilter >= 0) info.magFilter = s.magFilter;
+        if (s.minFilter >= 0) info.minFilter = s.minFilter;
+        if (s.wrapS >= 0)     info.wrapS = s.wrapS;
+        if (s.wrapT >= 0)     info.wrapT = s.wrapT;
+        return info;
+    }
+
+    static std::vector<unsigned char> Base64Decode(const std::string& input)
+    {
+        static const int table[256] = { /* -1 填充 */ };
+        // 建表
+        static bool init = false;
+        static int lookup[256];
+        if (!init)
+        {
+            memset(lookup, -1, sizeof(lookup));
+            const char* chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            for (int i = 0; chars[i]; i++)
+                lookup[(unsigned char)chars[i]] = i;
+            init = true;
+        }
+
+        std::vector<unsigned char> result;
+        result.reserve(input.size() * 3 / 4);
+
+        int val = 0, valb = -8;
+        for (unsigned char c : input)
+        {
+            if (lookup[c] == -1) break;
+            val = (val << 6) + lookup[c];
+            valb += 6;
+            if (valb >= 0)
+            {
+                result.push_back(static_cast<unsigned char>((val >> valb) & 0xFF));
+                valb -= 8;
+            }
+        }
+        return result;
+    }
+
+    static std::string RegisterTexture(const tinygltf::Model& model,const std::string& modelDir,int texIndex, bool sRGB)
+    {
+        if (texIndex < 0) return "";
+        const auto& gltfTex = model.textures[texIndex];
+        int imgIdx = gltfTex.source;
+        if (imgIdx < 0) return "";
+        const auto& img = model.images[imgIdx];
+
+        // Case 1: 外部文件 URI
+        if (!img.uri.empty() && img.uri.substr(0, 5) != "data:")
+            return modelDir + img.uri;
+
+        // Case 2: bufferView 嵌入
+        if (img.bufferView >= 0)
+        {
+            const auto& bv = model.bufferViews[img.bufferView];
+            const auto& buf = model.buffers[bv.buffer];
+            const unsigned char* data = buf.data.data() + bv.byteOffset;
+            int len = (int)bv.byteLength;
+
+            std::string name = "__embedded__" + std::to_string(imgIdx);
+            auto* rm = ResourceManager::Get();
+            if (rm->GetTextureID(name).value != INVALID_ID)
+                return name;
+
+            int minF = GL_LINEAR, magF = GL_LINEAR, wrapS = GL_CLAMP_TO_EDGE, wrapT = GL_CLAMP_TO_EDGE;
+            if (gltfTex.sampler >= 0)
+            {
+                const auto& s = model.samplers[gltfTex.sampler];
+                if (s.minFilter >= 0) minF = s.minFilter;
+                if (s.magFilter >= 0) magF = s.magFilter;
+                if (s.wrapS >= 0)     wrapS = s.wrapS;
+                if (s.wrapT >= 0)     wrapT = s.wrapT;
+            }
+
+            rm->CreateTextureFromMemory(name, data, len, minF, magF, wrapS, wrapT, sRGB);
+            return name;
+        }
+
+        // Case 3: data: URI（base64 编码）
+        if (!img.uri.empty() && img.uri.substr(0, 5) == "data:")
+        {
+            std::string name = "__embedded__" + std::to_string(imgIdx);
+            auto* rm = ResourceManager::Get();
+            if (rm->GetTextureID(name).value != INVALID_ID)
+                return name;
+
+            size_t commaPos = img.uri.find(',');
+            if (commaPos == std::string::npos) return "";
+            std::string base64 = img.uri.substr(commaPos + 1);
+            std::vector<unsigned char> decoded = Base64Decode(base64);
+
+            int minF = GL_LINEAR, magF = GL_LINEAR, wrapS = GL_CLAMP_TO_EDGE, wrapT = GL_CLAMP_TO_EDGE;
+            if (gltfTex.sampler >= 0)
+            {
+                const auto& s = model.samplers[gltfTex.sampler];
+                if (s.minFilter >= 0) minF = s.minFilter;
+                if (s.magFilter >= 0) magF = s.magFilter;
+                if (s.wrapS >= 0)     wrapS = s.wrapS;
+                if (s.wrapT >= 0)     wrapT = s.wrapT;
+            }
+
+            rm->CreateTextureFromMemory(name, decoded.data(), (int)decoded.size(), minF, magF, wrapS, wrapT, sRGB);
+            return name;
+        }
+
+        return "";
     }
 
 }

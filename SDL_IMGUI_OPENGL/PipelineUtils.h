@@ -6,6 +6,8 @@ namespace PipelineUtils
     // 缓存一下实现增量修改
     static PipelineState s_CurrentState;
 
+    static PipelineState GetCurrentState() { return s_CurrentState; }
+
 	// 捕获当前 GL 状态到 PipelineState 结构
     static PipelineState CaptureGLState()
     {

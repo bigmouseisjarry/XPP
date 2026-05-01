@@ -1,3 +1,4 @@
+#define GLM_ENABLE_EXPERIMENTAL
 #include "EntityFactory.h"
 #include "ComGameplay.h"
 #include "ComTransform.h"
@@ -6,6 +7,7 @@
 #include "ComRender.h"
 #include "ModelLoader.h"
 #include "Framebuffer.h"
+#include <gtx/matrix_decompose.hpp>
 
 entt::entity EntityFactory::CreatePlayer(entt::registry& registry)
 {
@@ -109,14 +111,30 @@ entt::entity EntityFactory::CreateModel3D(entt::registry& registry, const std::s
 
         for(const  auto& ti : subData.textures)
         {
-			TextureID texID = ResourceManager::Get()->LoadTexture(ti.path);
+            TextureID texID;
+            if (ti.sampler.valid)
+                texID = ResourceManager::Get()->LoadTexture(
+                    ti.path, 1, 1, ti.sampler.minFilter, ti.sampler.magFilter,
+                    ti.sampler.wrapS, ti.sampler.wrapT, ti.sampler.sRGB);
+            else
+                texID = ResourceManager::Get()->LoadTexture(ti.path);
             mat->SetTexture(ti.semantic, texID);
         }
+
         if (mat->GetTexture(TextureSemantic::Albedo).value == INVALID_ID)
             mat->SetTexture(TextureSemantic::Albedo, ResourceManager::Get()->GetTextureID("resources/white.png"));
 
         mat->Set("u_Color", subData.diffuseColor);
+        mat->Set("u_MetallicFactor", subData.metallicFactor);
+        mat->Set("u_RoughnessFactor", subData.roughnessFactor);
+        mat->Set("u_EmissiveFactor", subData.emissiveFactor);
 
+        if (subData.alphaMode == 2)       // BLEND
+            mat->m_Transparent = true;
+        if (subData.alphaMode == 1)       // MASK
+            mat->Set("u_AlphaCutoff", subData.alphaCutoff);
+
+        mat->m_DoubleSided = subData.doubleSided;
         modelComp.subMeshes.emplace_back(meshID, std::move(mat));
     }
 
@@ -178,4 +196,111 @@ entt::entity EntityFactory::CreateAxis(entt::registry& registry)
     registry.emplace<DestroyComponent>(entity);
 
     return entity;
+}
+
+entt::entity EntityFactory::CreateModelHierarchy(entt::registry& registry, const std::string& filepath)
+{
+    GLTFScene scene = ModelLoader::LoadGLTFScene(filepath);
+
+    std::vector<entt::entity> entities(scene.nodes.size(), entt::entity{});
+
+    // 第一轮：创建实体 + Transform（直接使用 TRS，仅 useMatrix 时分解）
+    for (size_t i = 0; i < scene.nodes.size(); i++)
+    {
+        const auto& node = scene.nodes[i];
+        auto entity = registry.create();
+        entities[i] = entity;
+
+        registry.emplace<TagComponent>(entity, TagComponent{ .name = node.name });
+        auto& transform = registry.emplace<Transform3DComponent>(entity);
+
+        if (node.useMatrix)
+        {
+            // 从矩阵分解 TRS
+            glm::vec3 skew;
+            glm::vec4 perspective;
+            glm::quat tempRotation = node.rotation;
+            glm::decompose(node.matrix, transform.scale, tempRotation, transform.position, skew, perspective);
+            transform.rotation = glm::eulerAngles(tempRotation) * (180.0f / glm::pi<float>());
+        }
+        else
+        {
+            transform.position = node.translation;
+            transform.rotation = glm::eulerAngles(node.rotation) * (180.0f / glm::pi<float>());
+            transform.scale = node.scale;
+        }
+        transform.isDirty = true;
+    }
+
+    // 第二轮：设置 parent/children 关系
+    for (size_t i = 0; i < scene.nodes.size(); i++)
+    {
+        auto& transform = registry.get<Transform3DComponent>(entities[i]);
+        for (int childIdx : scene.nodes[i].children)
+        {
+            auto& childTransform = registry.get<Transform3DComponent>(entities[childIdx]);
+            childTransform.parent = entities[i];
+            transform.children.push_back(entities[childIdx]);
+        }
+    }
+
+    // 第三轮：为有 mesh 的节点挂载 Model3DComponent
+    for (size_t i = 0; i < scene.nodes.size(); i++)
+    {
+        const auto& node = scene.nodes[i];
+        if (node.subMeshes.empty()) continue;
+
+        Model3DComponent modelComp;
+        for (size_t si = 0; si < node.subMeshes.size(); si++)
+        {
+            const auto& subData = node.subMeshes[si];
+            std::string meshName = filepath + "_node" + std::to_string(i) + "_sub" + std::to_string(si);
+            MeshID meshID = ResourceManager::Get()->CreateMesh<Vertex3D>(meshName, subData.vertices, subData.indices);
+
+            auto mat = std::make_unique<Material>();
+            mat->m_Shader = ResourceManager::Get()->GetShaderID("Shader3D.glsl");
+
+            for (const auto& ti : subData.textures)
+            {
+                TextureID texID;
+                if (ti.sampler.valid)
+                    texID = ResourceManager::Get()->LoadTexture(
+                        ti.path, 1, 1, ti.sampler.minFilter, ti.sampler.magFilter,
+                        ti.sampler.wrapS, ti.sampler.wrapT, ti.sampler.sRGB);
+                else
+                    texID = ResourceManager::Get()->LoadTexture(ti.path);
+                mat->SetTexture(ti.semantic, texID);
+            }
+            if (mat->GetTexture(TextureSemantic::Albedo).value == INVALID_ID)
+                mat->SetTexture(TextureSemantic::Albedo, ResourceManager::Get()->GetTextureID("resources/white.png"));
+
+            mat->Set("u_Color", subData.diffuseColor);
+            mat->Set("u_MetallicFactor", subData.metallicFactor);
+            mat->Set("u_RoughnessFactor", subData.roughnessFactor);
+            mat->Set("u_EmissiveFactor", subData.emissiveFactor);
+            if (subData.alphaMode == 2) mat->m_Transparent = true;
+            if (subData.alphaMode == 1) mat->Set("u_AlphaCutoff", subData.alphaCutoff);
+            mat->m_DoubleSided = subData.doubleSided;
+
+            modelComp.subMeshes.emplace_back(meshID, std::move(mat));
+        }
+        registry.emplace<Model3DComponent>(entities[i], std::move(modelComp));
+        registry.emplace<DestroyComponent>(entities[i]);
+    }
+
+    // 创建 Y→Z 转换根节点
+    auto y2zEntity = registry.create();
+    registry.emplace<TagComponent>(y2zEntity, TagComponent{ .name = "Y2Z_Root" });
+    auto& y2zTransform = registry.emplace<Transform3DComponent>(y2zEntity);
+    y2zTransform.SetRotation({ -90.0f, 0.0f, 0.0f });
+
+    // 将场景根节点挂在 Y2Z 下
+    for (int rootIdx : scene.rootNodes)
+    {
+        auto& rootTransform = registry.get<Transform3DComponent>(entities[rootIdx]);
+        rootTransform.parent = y2zEntity;
+        y2zTransform.children.push_back(entities[rootIdx]);
+    }
+
+    return y2zEntity;
 }

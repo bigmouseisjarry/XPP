@@ -49,6 +49,7 @@ public:
 
 	void InitUBO();
 	void Clear();
+	void SortAll();
 	void Flush(const std::vector<Light3DComponent*>& lights);  //TODO:不应该传值
 
 	void InitPipeline(bool has3D);   

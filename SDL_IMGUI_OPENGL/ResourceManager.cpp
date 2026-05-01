@@ -267,6 +267,9 @@ ShaderID ResourceManager::LoadShader(const std::string& filePath)
 
 TextureID ResourceManager::LoadTexture(const std::string& path, int cols, int rows)
 {
+    auto it = m_TextureNameToID.find(path);
+    if (it != m_TextureNameToID.end()) return it->second;
+
     TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
     m_Textures.push_back(std::make_unique<Texture>(path, cols, rows));
     m_TextureNameToID[path] = id;
@@ -285,6 +288,32 @@ TextureID ResourceManager::LoadHDRTexture(const std::string& name)
 {
     TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
     m_Textures.push_back(std::make_unique<Texture>(name, true));
+    m_TextureNameToID[name] = id;
+    return id;
+}
+
+TextureID ResourceManager::LoadTexture(const std::string& path, int cols, int rows,
+    int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB)
+{
+    auto it = m_TextureNameToID.find(path);
+    if (it != m_TextureNameToID.end()) return it->second;
+
+    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
+    m_Textures.emplace_back(std::unique_ptr<Texture>(
+        new Texture(path, cols, rows, minFilter, magFilter, wrapS, wrapT, sRGB)));
+    m_TextureNameToID[path] = id;
+    return id;
+}
+
+TextureID ResourceManager::CreateTextureFromMemory(const std::string& name, const unsigned char* data, int len, 
+    int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB)
+{
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
+    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
+    m_Textures.emplace_back(std::unique_ptr<Texture>(
+        new Texture(data, len, minFilter, magFilter, wrapS, wrapT, sRGB)));
     m_TextureNameToID[name] = id;
     return id;
 }

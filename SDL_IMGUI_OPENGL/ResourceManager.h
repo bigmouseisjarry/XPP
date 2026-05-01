@@ -61,6 +61,8 @@ public:
     TextureID LoadTexture(const std::string& path, int cols = 1, int rows = 1);
     TextureID LoadDefaultTexture(const std::string& name, float r, float g, float b, float a);      // TUDO: 这几个加载纹理可以合并一下
     TextureID LoadHDRTexture(const std::string& name);
+    TextureID LoadTexture(const std::string& path, int cols, int rows, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
+    TextureID CreateTextureFromMemory(const std::string& name, const unsigned char* data, int len, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
     TextureID CreateNoiseTexture(const std::string& name, int width, int height);
 
     template<typename VertexT>

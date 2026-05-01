@@ -345,7 +345,7 @@ void AnimationSystem::Update(entt::registry& registry, float deltaTime)
 // 调用顺序规则：任何可能修改 Transform 的 System 之后，渲染相关的 System 之前
 void HierarchySystem::Update(entt::registry& registry)
 {
-    // 3D：局部脏 → 标脏子树
+
     {
         auto view = registry.view<Transform3DComponent>();
         for (auto [entity, t] : view.each())
@@ -357,7 +357,7 @@ void HierarchySystem::Update(entt::registry& registry)
         }
     }
 
-    // 2D：局部脏 → 标脏子树
+
     {
         auto view = registry.view<Transform2DComponent>();
         for (auto [entity, t] : view.each())

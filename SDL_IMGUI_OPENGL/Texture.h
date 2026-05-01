@@ -38,6 +38,9 @@ public:
 private:
 	Texture(float r, float g, float b, float a);
 	Texture(const float* data, int width, int height);
+	Texture(const std::string& path, int cols, int rows ,int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
+	// 从内存中加载
+	Texture(const unsigned char* data, int len, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
 	Texture() : m_RendererID(0), m_LocalBuffer(nullptr), m_Width(0), m_Height(0), m_BPP(0), m_cols(1), m_rows(1) {}
 	friend class ResourceManager; 
 };

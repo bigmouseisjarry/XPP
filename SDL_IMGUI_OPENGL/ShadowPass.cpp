@@ -3,6 +3,7 @@
 #include "Renderer.h"
 #include <ext/matrix_transform.hpp>
 #include <ext/matrix_clip_space.hpp>
+#include "PipelineUtils.h"
 
 PipelineState ShadowPass::GetPipelineState() const
 {
@@ -67,12 +68,22 @@ void ShadowPass::Execute(RenderContext& ctx)
         glClear(GL_DEPTH_BUFFER_BIT);
 
         // 画所有不透明物体
+        bool curDoubleSided = false;
         const Mesh* curMesh = nullptr;
         for (auto& [layer, units] : ctx.renderUnits)
         {
             for (const auto& unit : units)
             {
                 if (unit.material->m_Transparent) continue;
+
+                bool doubleSided = unit.material->m_DoubleSided;
+                if (doubleSided != curDoubleSided)
+                {
+                    curDoubleSided = doubleSided;
+                    PipelineState ps = PipelineUtils::GetCurrentState();
+                    ps.cull.enabled = !doubleSided;
+                    PipelineUtils::ApplyPipelineState(ps);
+                }
 
                 const Mesh* nextMesh = ResourceManager::Get()->GetMesh(unit.mesh);
                 if (curMesh != nextMesh)

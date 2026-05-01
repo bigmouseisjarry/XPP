@@ -33,9 +33,23 @@ void Renderer::Clear()
         units.clear();
 
 }
+// 不同的pass有着不同的排序方式，以后演进
+void Renderer::SortAll()
+{
+    for (auto& [layer, units] : m_RenderUnits)
+    {
+        std::sort(units.begin(), units.end(),
+            [](const RenderUnit& a, const RenderUnit& b)
+            {
+                return a.SortKey() < b.SortKey();
+            });
+    }
+}
 
 void Renderer::Flush(const std::vector<Light3DComponent*>& lights)
 {
+    SortAll();
+
     RenderContext ctx{ m_RenderUnits,m_Camera2DUnits, m_Camera3DUnits,lights,
         *m_LightUBO,*m_PerFrameUBO,*m_PerObjectUBO,m_Viewport };
     

@@ -2,6 +2,7 @@
 #include "tiny_obj_loader.h"
 #include "GeometryUtils.h"
 #include <gtc/quaternion.hpp>
+#include <iostream>
 
 namespace ModelLoader
 {
@@ -127,8 +128,8 @@ namespace ModelLoader
         else if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".glb")
             ret = loader.LoadBinaryFromFile(&model, &err, &warn, filepath);
 
-        if (!warn.empty()) { /* TODO: 添加日志 */}
-        if (!err.empty()) { /* TODO: 添加日志 */ }
+        if (!warn.empty()) { std::cout <<"WARN :  " << warn << std::endl; }
+        if (!err.empty()) { std::cout << "ERR :  " << err << std::endl; }
         if (!ret) return {};
 
         // 提取模型目录，用于拼接纹理相对路径
@@ -222,7 +223,8 @@ namespace ModelLoader
                 if (posIt == prim.attributes.end()) continue;
 
                 int stride; size_t count;
-                const unsigned char* posData = GeometryUtils::GetAccessorPtr(model, posIt->second, stride, count);
+                auto posBuffer = GeometryUtils::GetAccessorData(model, posIt->second, stride, count);
+                const unsigned char* posData = posBuffer.data();
                 subMesh.vertices.resize(count);
 
                 for (size_t v = 0; v < count; v++)
@@ -239,7 +241,8 @@ namespace ModelLoader
                 if (hasNormals)
                 {
                     int normStride; size_t normCount;
-                    const unsigned char* normData = GeometryUtils::GetAccessorPtr(model, normIt->second, normStride, normCount);
+                    auto normBuffer = GeometryUtils::GetAccessorData(model, normIt->second, normStride, normCount);
+                    const unsigned char* normData = normBuffer.data();
 
                     for (size_t v = 0; v < normCount && v < count; v++)
                     {
@@ -261,7 +264,8 @@ namespace ModelLoader
                 if (hasUVs)
                 {
                     int uvStride; size_t uvCount;
-                    const unsigned char* uvData = GeometryUtils::GetAccessorPtr(model, uvIt->second, uvStride, uvCount);
+                    auto uvBuffer = GeometryUtils::GetAccessorData(model, uvIt->second, uvStride, uvCount);
+                    const unsigned char* uvData = uvBuffer.data();
 
                     for (size_t v = 0; v < uvCount && v < count; v++)
                     {
@@ -284,7 +288,8 @@ namespace ModelLoader
                 if (hasTangents)
                 {
                     int tanStride; size_t tanCount;
-                    const unsigned char* tanData = GeometryUtils::GetAccessorPtr(model, tanIt->second, tanStride,tanCount);
+                    auto tanBuffer = GeometryUtils::GetAccessorData(model, tanIt->second, tanStride, tanCount);
+                    const unsigned char* tanData = tanBuffer.data();
 
                     for (size_t v = 0; v < tanCount && v < count; v++)
                     {
@@ -299,22 +304,17 @@ namespace ModelLoader
                     }
                 }
 
-
                 // --- 索引 ---
                 if (prim.indices >= 0)
                 {
-                    const auto& idxAcc = model.accessors[prim.indices];
-                    const auto& idxBV = model.bufferViews[idxAcc.bufferView];
-                    const auto& idxBuf = model.buffers[idxBV.buffer];
-                    const unsigned char* idxData = idxBuf.data.data()
-                        + idxBV.byteOffset + idxAcc.byteOffset;
-                    int idxStride = idxAcc.ByteStride(idxBV);
-                    if (idxStride == 0)
-                        idxStride = GeometryUtils::GetComponentSize(idxAcc.componentType);
+                    int idxStride; size_t idxCount;
+                    auto idxBuffer = GeometryUtils::GetAccessorData(model, prim.indices, idxStride, idxCount);
+                    const unsigned char* idxData = idxBuffer.data();
 
-                    subMesh.indices.resize(idxAcc.count);
-                    for (size_t i = 0; i < idxAcc.count; i++)
+                    subMesh.indices.resize(idxCount);
+                    for (size_t i = 0; i < idxCount; i++)
                     {
+                        const auto& idxAcc = model.accessors[prim.indices];
                         if (idxAcc.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
                             subMesh.indices[i] = *(idxData + i * idxStride);
                         else if (idxAcc.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
@@ -364,58 +364,58 @@ namespace ModelLoader
                         (float)pbr.baseColorFactor[3]
                     };
 
-                    // 辅助 lambda：从 glTF texture index 解析图片路径
-                    auto getTexturePath = [&](int texIndex) -> std::string {
-                        if (texIndex < 0) return "";
-                        const auto& gltfTex = model.textures[texIndex];
-                        int imgIdx = gltfTex.source;
-                        if (imgIdx < 0) return "";
-                        const auto& img = model.images[imgIdx];
-                        if (!img.uri.empty() && img.uri.substr(0, 5) != "data:")
-                            return modelDir + img.uri;
-							return "";      // 内嵌数据或无效路径，暂不支持
-                        };
+                    subMesh.metallicFactor = (float)pbr.metallicFactor;
+                    subMesh.roughnessFactor = (float)pbr.roughnessFactor;
+                    subMesh.emissiveFactor = {
+                        (float)mat.emissiveFactor[0],
+                        (float)mat.emissiveFactor[1],
+                        (float)mat.emissiveFactor[2]
+                    };
+
+                    if (mat.alphaMode == "MASK")       subMesh.alphaMode = 1;
+                    else if (mat.alphaMode == "BLEND") subMesh.alphaMode = 2;
+                    subMesh.alphaCutoff = (float)mat.alphaCutoff;
+                    subMesh.doubleSided = mat.doubleSided;
 
                     // Albedo（漫反射/基础颜色纹理）
                     if (pbr.baseColorTexture.index >= 0)
                     {
-                        std::string path = getTexturePath(pbr.baseColorTexture.index);
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, pbr.baseColorTexture.index, true);
                         if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Albedo, path });
+                            subMesh.textures.push_back({ TextureSemantic::Albedo, path ,GeometryUtils::GetSamplerInfo(model,pbr.baseColorTexture.index, true) });
                     }
 
                     // Normal（法线纹理）
                     if (mat.normalTexture.index >= 0)
                     {
-                        std::string path = getTexturePath(mat.normalTexture.index);
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.normalTexture.index, false);
                         if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Normal, path });
+                            subMesh.textures.push_back({ TextureSemantic::Normal, path ,GeometryUtils::GetSamplerInfo(model,mat.normalTexture.index, false) });
                     }
 
                     // MetallicRoughness（金属度/粗糙度纹理）
                     if (pbr.metallicRoughnessTexture.index >= 0)
                     {
-                        std::string path = getTexturePath(pbr.metallicRoughnessTexture.index);
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, pbr.metallicRoughnessTexture.index, false);
                         if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::MetallicRoughness, path });
+                            subMesh.textures.push_back({ TextureSemantic::MetallicRoughness, path ,GeometryUtils::GetSamplerInfo(model,pbr.metallicRoughnessTexture.index, false) });
                     }
 
                     // Emissive（自发光纹理）
                     if (mat.emissiveTexture.index >= 0)
                     {
-                        std::string path = getTexturePath(mat.emissiveTexture.index);
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.emissiveTexture.index, true);
                         if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Emissive, path });
+                            subMesh.textures.push_back({ TextureSemantic::Emissive, path ,GeometryUtils::GetSamplerInfo(model,mat.emissiveTexture.index, true) });
                     }
 
                     // Occlusion (AO，环境光遮蔽纹理)
                     if (mat.occlusionTexture.index >= 0)
                     {
-                        std::string path = getTexturePath(mat.occlusionTexture.index);
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.occlusionTexture.index, false);
                         if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Occlusion, path });
+                            subMesh.textures.push_back({ TextureSemantic::Occlusion, path ,GeometryUtils::GetSamplerInfo(model,mat.occlusionTexture.index, false) });
                     }
-
                 }
 
                 modelData.subMeshes.push_back(std::move(subMesh));
@@ -433,6 +433,278 @@ namespace ModelLoader
         else if ((filepath.size() >= 5 && filepath.substr(filepath.size() - 5) == ".gltf") || (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".glb"))
 				return LoadGLTF(filepath);
         return {};
+    }
+
+    GLTFScene LoadGLTFScene(const std::string& filepath)
+    {
+        tinygltf::Model model;
+        tinygltf::TinyGLTF loader;
+        std::string err, warn;
+
+        bool ret = false;
+        if (filepath.size() >= 5 && filepath.substr(filepath.size() - 5) == ".gltf")
+            ret = loader.LoadASCIIFromFile(&model, &err, &warn, filepath);
+        else if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".glb")
+            ret = loader.LoadBinaryFromFile(&model, &err, &warn, filepath);
+
+        if (!warn.empty()) { std::cout << "WARN :  " << warn << std::endl; }
+        if (!err.empty()) { std::cout << "ERR :  " << err << std::endl; }
+        if (!ret) return {};
+
+        size_t lastSlash = filepath.find_last_of("/\\");
+        std::string modelDir = (lastSlash != std::string::npos)
+            ? filepath.substr(0, lastSlash + 1) : "";
+
+        GLTFScene scene;
+        scene.nodes.resize(model.nodes.size());
+
+        // ---- 步骤1：遍历所有节点，提取局部变换 + 层级关系 ----
+        for (size_t ni = 0; ni < model.nodes.size(); ni++)
+        {
+            const auto& node = model.nodes[ni];
+            auto& nodeData = scene.nodes[ni];
+            nodeData.name = node.name;
+            nodeData.meshIndex = node.mesh;
+
+            // 子节点索引
+            for (int child : node.children)
+                nodeData.children.push_back(child);
+
+            // 局部变换：优先保留 TRS
+            if (node.matrix.size() == 16)
+            {
+                nodeData.useMatrix = true;
+                float m[16];
+                for (int i = 0; i < 16; i++) m[i] = (float)node.matrix[i];
+                memcpy(&nodeData.matrix, m, sizeof(glm::mat4));
+            }
+            else
+            {
+                if (node.translation.size() == 3)
+                    nodeData.translation = {
+                        (float)node.translation[0],
+                        (float)node.translation[1],
+                        (float)node.translation[2]
+                };
+                if (node.rotation.size() == 4)
+                    // glm::quat 构造函数是(w, x, y, z)
+                    nodeData.rotation = glm::quat(
+                        (float)node.rotation[3],  // w
+                        (float)node.rotation[0],  // x
+                        (float)node.rotation[1],  // y
+                        (float)node.rotation[2]); // z
+                if (node.scale.size() == 3)
+                    nodeData.scale = {
+                        (float)node.scale[0],
+                        (float)node.scale[1],
+                        (float)node.scale[2]
+                };
+            }
+
+            // ---- 步骤2：提取该节点的 mesh 数据（顶点保持局部空间）----
+            if (node.mesh < 0) continue;
+            const auto& gltfMesh = model.meshes[node.mesh];
+
+            for (size_t p = 0; p < gltfMesh.primitives.size(); p++)
+            {
+                const auto& prim = gltfMesh.primitives[p];
+                SubMeshData subMesh;
+                subMesh.name = gltfMesh.name.empty()
+                    ? ("mesh" + std::to_string(node.mesh))
+                    : gltfMesh.name;
+                if (gltfMesh.primitives.size() > 1)
+                    subMesh.name += "_prim" + std::to_string(p);
+
+                // --- 位置（局部空间，不烘焙变换）---
+                auto posIt = prim.attributes.find("POSITION");
+                if (posIt == prim.attributes.end()) continue;
+
+                int stride; size_t count;
+                auto posBuffer = GeometryUtils::GetAccessorData(model, posIt->second, stride, count);
+                const unsigned char* posData = posBuffer.data();
+                subMesh.vertices.resize(count);
+
+                for (size_t v = 0; v < count; v++)
+                {
+                    const float* f = reinterpret_cast<const float*>(posData + v * stride);
+                    subMesh.vertices[v].Position = { f[0], f[1], f[2] };
+                }
+
+                // --- 法线（局部空间）---
+                auto normIt = prim.attributes.find("NORMAL");
+                bool hasNormals = (normIt != prim.attributes.end());
+
+                if (hasNormals)
+                {
+                    int normStride; size_t normCount;
+                    auto normBuffer = GeometryUtils::GetAccessorData(model, normIt->second, normStride, normCount);
+                    const unsigned char* normData = normBuffer.data();
+                    for (size_t v = 0; v < normCount && v < count; v++)
+                    {
+                        const float* f = reinterpret_cast<const float*>(normData + v * normStride);
+                        subMesh.vertices[v].Normal = { f[0], f[1], f[2] };
+                    }
+                }
+                else
+                {
+                    for (size_t v = 0; v < count; v++)
+                        subMesh.vertices[v].Normal = { 0, 0, 1 };
+                }
+
+                // --- UV ---
+                auto uvIt = prim.attributes.find("TEXCOORD_0");
+                bool hasUVs = (uvIt != prim.attributes.end());
+
+                if (hasUVs)
+                {
+                    int uvStride; size_t uvCount;
+                    auto uvBuffer = GeometryUtils::GetAccessorData(model, uvIt->second, uvStride, uvCount);
+                    const unsigned char* uvData = uvBuffer.data();
+                    for (size_t v = 0; v < uvCount && v < count; v++)
+                    {
+                        const float* f = reinterpret_cast<const float*>(uvData + v * uvStride);
+                        // glTF UV 原点在左上角，OpenGL 在左下角，须翻转 Y 轴
+                        subMesh.vertices[v].UV = { f[0], 1.0f - f[1] };
+                    }
+                }
+                else
+                {
+                    for (size_t v = 0; v < count; v++)
+                        subMesh.vertices[v].UV = { 0, 0 };
+                }
+
+                // --- 切线（局部空间）---
+                auto tanIt = prim.attributes.find("TANGENT");
+                bool hasTangents = (tanIt != prim.attributes.end());
+
+                if (hasTangents)
+                {
+                    int tanStride; size_t tanCount;
+                    auto tanBuffer = GeometryUtils::GetAccessorData(model, tanIt->second, tanStride, tanCount);
+                    const unsigned char* tanData = tanBuffer.data();
+                    for (size_t v = 0; v < tanCount && v < count; v++)
+                    {
+                        const float* f = reinterpret_cast<const float*>(tanData + v * tanStride);
+                        subMesh.vertices[v].Tangent = { f[0], f[1], f[2], f[3] };
+                    }
+                }
+
+                // --- 索引 ---
+                if (prim.indices >= 0)
+                {
+                    int idxStride; size_t idxCount;
+                    auto idxBuffer = GeometryUtils::GetAccessorData(model, prim.indices, idxStride, idxCount);
+                    const unsigned char* idxData = idxBuffer.data();
+                    subMesh.indices.resize(idxCount);
+                    for (size_t i = 0; i < idxCount; i++)
+                    {
+                        const auto& idxAcc = model.accessors[prim.indices];
+                        if (idxAcc.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE)
+                            subMesh.indices[i] = *(idxData + i * idxStride);
+                        else if (idxAcc.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT)
+                            subMesh.indices[i] = *reinterpret_cast<const uint16_t*>(idxData + i * idxStride);
+                        else if (idxAcc.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
+                            subMesh.indices[i] = *reinterpret_cast<const uint32_t*>(idxData + i * idxStride);
+                    }
+                }
+                else
+                {
+                    subMesh.indices.resize(count);
+                    for (size_t i = 0; i < count; i++)
+                        subMesh.indices[i] = (uint32_t)i;
+                }
+
+                // --- 图元模式展开 ---
+                int mode = (prim.mode == -1) ? TINYGLTF_MODE_TRIANGLES : prim.mode;
+                if (mode == TINYGLTF_MODE_TRIANGLE_STRIP)
+                    GeometryUtils::ExpandStripToTriangles(subMesh.indices);
+                else if (mode == TINYGLTF_MODE_TRIANGLE_FAN)
+                    GeometryUtils::ExpandFanToTriangles(subMesh.indices);
+
+                if (!hasNormals && !subMesh.indices.empty())
+                    GeometryUtils::ComputeSmoothNormals(subMesh.vertices, subMesh.indices);
+                if (!hasTangents && !subMesh.indices.empty())
+                    GeometryUtils::ComputeTangents(subMesh.vertices, subMesh.indices);
+
+                // --- 材质 ---
+                if (prim.material >= 0)
+                {
+                    const auto& mat = model.materials[prim.material];
+                    const auto& pbr = mat.pbrMetallicRoughness;
+
+                    subMesh.diffuseColor = {
+                        (float)pbr.baseColorFactor[0],
+                        (float)pbr.baseColorFactor[1],
+                        (float)pbr.baseColorFactor[2],
+                        (float)pbr.baseColorFactor[3]
+                    };
+                    subMesh.metallicFactor = (float)pbr.metallicFactor;
+                    subMesh.roughnessFactor = (float)pbr.roughnessFactor;
+                    subMesh.emissiveFactor = {
+                        (float)mat.emissiveFactor[0],
+                        (float)mat.emissiveFactor[1],
+                        (float)mat.emissiveFactor[2]
+                    };
+                    if (mat.alphaMode == "MASK")       subMesh.alphaMode = 1;
+                    else if (mat.alphaMode == "BLEND") subMesh.alphaMode = 2;
+                    subMesh.alphaCutoff = (float)mat.alphaCutoff;
+                    subMesh.doubleSided = mat.doubleSided;
+
+                    if (pbr.baseColorTexture.index >= 0)
+                    {
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, pbr.baseColorTexture.index,
+                            true);
+                        if (!path.empty())
+                            subMesh.textures.push_back({ TextureSemantic::Albedo, path,
+                                GeometryUtils::GetSamplerInfo(model, pbr.baseColorTexture.index, true) });
+                    }
+                    if (mat.normalTexture.index >= 0)
+                    {
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.normalTexture.index,
+                            false);
+                        if (!path.empty())
+                            subMesh.textures.push_back({ TextureSemantic::Normal, path,
+                                GeometryUtils::GetSamplerInfo(model, mat.normalTexture.index, false) });
+                    }
+                    if (pbr.metallicRoughnessTexture.index >= 0)
+                    {
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir,
+                            pbr.metallicRoughnessTexture.index, false);
+                        if (!path.empty())
+                            subMesh.textures.push_back({ TextureSemantic::MetallicRoughness, path,
+                                GeometryUtils::GetSamplerInfo(model, pbr.metallicRoughnessTexture.index, false) });
+                    }
+                    if (mat.emissiveTexture.index >= 0)
+                    {
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.emissiveTexture.index,
+                            true);
+                        if (!path.empty())
+                            subMesh.textures.push_back({ TextureSemantic::Emissive, path,
+                                GeometryUtils::GetSamplerInfo(model, mat.emissiveTexture.index, true) });
+                    }
+                    if (mat.occlusionTexture.index >= 0)
+                    {
+                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.occlusionTexture.index,
+                            false);
+                        if (!path.empty())
+                            subMesh.textures.push_back({ TextureSemantic::Occlusion, path,
+                                GeometryUtils::GetSamplerInfo(model, mat.occlusionTexture.index, false) });
+                    }
+                }
+
+                nodeData.subMeshes.push_back(std::move(subMesh));
+            }
+        }
+
+        // ---- 步骤3：记录场景根节点 ----
+        if (!model.scenes.empty())
+        {
+            int sceneIdx = (model.defaultScene >= 0) ? model.defaultScene : 0;
+            for (int rootNode : model.scenes[sceneIdx].nodes)
+                scene.rootNodes.push_back(rootNode);
+        }
+
+        return scene;
     }
 
 }

@@ -22,6 +22,7 @@ struct Material
 	std::unordered_map<std::string, UniformValue> m_Properties;    // 通用 uniform 属性，shader 里通过名字访问
     std::unordered_map<TextureSemantic, TextureID, TextureSemanticHash> m_Textures;
     bool   m_Transparent = false;
+    bool   m_DoubleSided = false;           
     int    m_RenderOrder = 0;
 
 

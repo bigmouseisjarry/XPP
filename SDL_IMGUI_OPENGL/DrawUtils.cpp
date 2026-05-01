@@ -6,6 +6,7 @@
 #include "mesh.h"
 #include "TextureSemantic.h"
 #include <algorithm>
+#include "PipelineUtils.h"
 
 namespace DrawUtils
 {
@@ -45,30 +46,12 @@ namespace DrawUtils
         UniformBuffer& perFrameUBO,
         UniformBuffer& perObjectUBO)
     {
-        // 排序逻辑
-        std::sort(units.begin(), units.end(), [&](const RenderUnit& a, const RenderUnit& b)
-            {
-                if (transparent) {
-                    if (a.material->m_RenderOrder != b.material->m_RenderOrder) {
-                        return a.material->m_RenderOrder < b.material->m_RenderOrder;
-                    }
-                }
-
-                if (a.material->m_Shader.value != b.material->m_Shader.value) {
-                    return a.material->m_Shader.value < b.material->m_Shader.value;
-                }
-
-                if (a.material->GetTexture(TextureSemantic::Albedo).value != b.material->GetTexture(TextureSemantic::Albedo).value)
-                {
-                    return a.material->GetTexture(TextureSemantic::Albedo).value <
-                        b.material->GetTexture(TextureSemantic::Albedo).value;
-                }
-
-                return a.mesh.value < b.mesh.value;
-            });
+        // units 已由 Renderer::SortAll() 按复合键排好，无需重排
 
         const Shader* curShader = nullptr;
         const Mesh* mesh = nullptr;
+        bool curDoubleSided = false;
+
 
         // 更新 per-frame UBO
         PerFrameData frameData;
@@ -94,6 +77,15 @@ namespace DrawUtils
         for (const auto& x : units)
         {
             if (x.material->m_Transparent != transparent) continue;
+
+            bool doubleSided = x.material->m_DoubleSided;
+            if (doubleSided != curDoubleSided)
+            {
+                curDoubleSided = doubleSided;
+                PipelineState ps = PipelineUtils::GetCurrentState();
+                ps.cull.enabled = !doubleSided;
+                PipelineUtils::ApplyPipelineState(ps);
+            }
 
             const auto& nextShader = ResourceManager::Get()->GetShader(x.material->m_Shader);
             if (curShader != nextShader)
@@ -145,6 +137,14 @@ namespace DrawUtils
             objData.u_Model = x.model;
             objData.u_MVP = projView * x.model;
             objData.u_Color = std::get<glm::vec4>(*x.material->Get("u_Color"));
+            const UniformValue* mf = x.material->Get("u_MetallicFactor");
+            objData.u_MetallicFactor = mf ? std::get<float>(*mf) : 1.0f;
+            const UniformValue* rf = x.material->Get("u_RoughnessFactor");
+            objData.u_RoughnessFactor = rf ? std::get<float>(*rf) : 1.0f;
+            const UniformValue* ef = x.material->Get("u_EmissiveFactor");
+            objData.u_EmissiveFactor = ef ? glm::vec4(std::get<glm::vec3>(*ef), 0.0f) : glm::vec4(0.0f);
+            const UniformValue* ac = x.material->Get("u_AlphaCutoff");
+            objData.u_AlphaCutoff = ac ? std::get<float>(*ac) : 0.5f;
             perObjectUBO.SetData(&objData, sizeof(PerObjectData));
 
             // 反射循环：Material 自定义属性
@@ -158,6 +158,7 @@ namespace DrawUtils
             }
 
             glDrawElements(mesh->GetDrawMode(), mesh->GetIBO()->GetCount(), GL_UNSIGNED_INT, nullptr);
+
         }
 
         // 清理状态

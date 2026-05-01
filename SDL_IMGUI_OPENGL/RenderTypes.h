@@ -32,6 +32,18 @@ struct RenderUnit
     MeshID mesh;
     const Material* material;
     glm::mat4 model;
+
+    uint64_t SortKey() const
+    {
+        // [isTransparent:1][doubleSided:1][shader:16][albedo:16][mesh:30]
+        uint64_t key = 0;
+        key |= uint64_t(material->m_Transparent ? 1 : 0) << 63;
+        key |= uint64_t(material->m_DoubleSided ? 1 : 0) << 62;
+        key |= uint64_t(material->m_Shader.value & 0xFFFF) << 46;
+        key |= uint64_t(material->GetTexture(TextureSemantic::Albedo).value & 0xFFFF) << 30;
+        key |= uint64_t(mesh.value & 0x3FFFFFFF);
+        return key;
+    }
 };
 
 struct CameraUnit
@@ -53,6 +65,11 @@ struct alignas(16) PerObjectData
     glm::mat4 u_Model;
     glm::mat4 u_MVP;
     glm::vec4 u_Color;
+    float u_MetallicFactor;
+    float u_RoughnessFactor;
+    float u_AlphaCutoff;    
+    float _pad2;
+    glm::vec4 u_EmissiveFactor;   // xyz 生效, w=0
 };
 
 struct alignas(16) LightData

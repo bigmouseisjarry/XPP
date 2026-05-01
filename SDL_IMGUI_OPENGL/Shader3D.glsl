@@ -22,6 +22,11 @@ layout(std140) uniform PerObjectData
     mat4 u_Model;
     mat4 u_MVP;
     vec4 u_Color;
+    float u_MetallicFactor;
+    float u_RoughnessFactor;
+    float u_AlphaCutoff;
+    float _pad2;
+    vec4 u_EmissiveFactor;
 };
 
 void main()
@@ -65,6 +70,11 @@ layout(std140) uniform PerObjectData
     mat4 u_Model;
     mat4 u_MVP;
     vec4 u_Color;
+    float u_MetallicFactor;
+    float u_RoughnessFactor;
+    float u_AlphaCutoff;
+    float _pad2;
+    vec4 u_EmissiveFactor;
 };
 
 struct LightInfo
@@ -123,12 +133,13 @@ void main()
 
     vec3 albedo = texture(u_AlbedoMap, v_TexCoord).rgb * u_Color.rgb;
     float alpha = texture(u_AlbedoMap, v_TexCoord).a * u_Color.a;
+    if (alpha < u_AlphaCutoff) discard;
 
     vec2 mr = texture(u_MetallicRoughnessMap, v_TexCoord).bg;
-    float roughness = mr.x;
-    float metallic  = mr.y;
+    float roughness = mr.x * u_RoughnessFactor;
+    float metallic  = mr.y * u_MetallicFactor;
 
-    vec3 emissive = texture(u_EmissiveMap, v_TexCoord).rgb;
+    vec3 emissive = texture(u_EmissiveMap, v_TexCoord).rgb * u_EmissiveFactor.rgb;
 
     float ao = texture(u_OcclusionMap, v_TexCoord).r;
 

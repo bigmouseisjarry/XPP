@@ -162,7 +162,7 @@ unsigned int Shader::CompileShader(unsigned int type, const std::string& source)
         glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
         char* message = (char*)alloca(sizeof(char) * length);
         glGetShaderInfoLog(id, length, &length, message);
-        std::cout << "着色器编译失败" << std::endl;
+        std::cout << m_filePath <<" 着色器编译失败" << std::endl;
         std::cout << message << std::endl;
         glDeleteShader(id);
         return 0;
