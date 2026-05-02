@@ -46,9 +46,13 @@ void StoryScene::Enter()
 	auto& modelTrans = m_Registry.get<Transform3DComponent>(modelEntity);
 	modelTrans.SetPosition(glm::vec3(0.0f, 0.0f, 10.0f));
 
-	auto modelEntity3 = EntityFactory::CreateModel3D(m_Registry, "resources/model/6/scene.gltf");
-	auto& modelTrans3 = m_Registry.get<Transform3DComponent>(modelEntity3);
-	modelTrans3.SetPosition(glm::vec3(0.0f, 0.0f, 10.0f));
+	//auto modelEntity2 = EntityFactory::CreateModelHierarchy(m_Registry, "resources/model/7/scene.gltf");
+	//auto& modelTrans2 = m_Registry.get<Transform3DComponent>(modelEntity2);
+	//modelTrans2.SetPosition(glm::vec3(0.0f, 0.0f, 10.0f));
+
+	EntityFactory::CreateModel3DAsync("resources/model/6/scene.gltf");
+	//auto& modelTrans3 = m_Registry.get<Transform3DComponent>(modelEntity3);
+	//modelTrans3.SetPosition(glm::vec3(0.0f, 0.0f, 10.0f));
 
 	// 设置相机轨道
 	auto& physics = m_Registry.get<Physics3DComponent>(modelEntity);

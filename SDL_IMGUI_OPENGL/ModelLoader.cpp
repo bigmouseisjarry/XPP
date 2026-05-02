@@ -7,115 +7,6 @@
 namespace ModelLoader
 {
 
-    ModelData LoadOBJ(const std::string& filepath)
-    {
-        tinyobj::attrib_t attrib;
-        std::vector<tinyobj::shape_t> shapes;
-        std::vector<tinyobj::material_t> materials;
-        std::string warn, err;
-
-        // 加载OBJ，MTL路径设为模型同目录
-        size_t lastSlash = filepath.find_last_of("/\\");
-        std::string mtlDir = (lastSlash != std::string::npos) ? filepath.substr(0, lastSlash + 1) : "";
-
-        bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err,
-            filepath.c_str(), mtlDir.c_str());
-
-        ModelData modelData;
-
-        for (const auto& shape : shapes)
-        {
-            SubMeshData subMesh;
-            subMesh.name = shape.name;
-
-            std::unordered_map<uint64_t, uint32_t> vertexCache;
-
-            size_t indexOffset = 0;
-            for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++)
-            {
-                int fv = shape.mesh.num_face_vertices[f]; // 面有几个顶点(通常=3)
-                for (size_t v = 0; v < fv; v++)
-                {
-                    tinyobj::index_t idx = shape.mesh.indices[indexOffset + v];
-
-                    // 构建去重key
-                    uint64_t key = (uint64_t(idx.vertex_index) << 32)
-                        | (uint64_t(idx.normal_index + 1) << 16)  // +1因为-1=无法线
-                        | (uint64_t(idx.texcoord_index + 1));
-
-                    auto it = vertexCache.find(key);
-                    if (it != vertexCache.end())
-                    {
-                        subMesh.indices.push_back(it->second);
-                    }
-                    else
-                    {
-                        Vertex3D vert;
-                        // position
-                        if (idx.vertex_index >= 0)
-                            vert.Position = {
-                                attrib.vertices[3 * idx.vertex_index],
-                                attrib.vertices[3 * idx.vertex_index + 1],
-                                attrib.vertices[3 * idx.vertex_index + 2]
-                        };
-                        // normal
-                        if (idx.normal_index >= 0 && !attrib.normals.empty())
-                            vert.Normal = {
-                                attrib.normals[3 * idx.normal_index],
-                                attrib.normals[3 * idx.normal_index + 1],
-                                attrib.normals[3 * idx.normal_index + 2]
-                        };
-                        else
-                            vert.Normal = { 0,1,0 };
-                        // uv
-                        if (idx.texcoord_index >= 0 && !attrib.texcoords.empty())
-                            vert.UV = {
-                                attrib.texcoords[2 * idx.texcoord_index],
-                                attrib.texcoords[2 * idx.texcoord_index + 1]
-                        };
-                        else
-                            vert.UV = { 0,0 };
-
-                        uint32_t newIdx = static_cast<uint32_t>(subMesh.vertices.size());
-                        subMesh.indices.push_back(newIdx);
-                        vertexCache[key] = newIdx;
-                        subMesh.vertices.push_back(vert);
-                    }
-                }
-                indexOffset += fv;
-            }
-
-            // 提取材质信息
-            if (!shape.mesh.material_ids.empty() && shape.mesh.material_ids[0] >= 0)
-            {
-                const auto& mat = materials[shape.mesh.material_ids[0]];
-                // 漫反射颜色 (RGB)，Alpha 强制设为 1.0
-                subMesh.diffuseColor = { mat.diffuse[0], mat.diffuse[1], mat.diffuse[2], 1.0f };
-                // 漫反射贴图路径：拼接上之前提取的 mtlDir
-                if (!mat.diffuse_texname.empty())
-                    subMesh.textures.push_back({ TextureSemantic::Albedo, mtlDir + mat.diffuse_texname });
-            }
-
-            bool hasNormals = false;
-            for (const auto& v : subMesh.vertices)
-            {
-                if (v.Normal != glm::vec3(0, 0, 1)) { hasNormals = true; break; }
-            }
-            if (!hasNormals && !subMesh.indices.empty())
-                GeometryUtils::ComputeSmoothNormals(subMesh.vertices, subMesh.indices);
-
-            GeometryUtils::ApplyCoordinateTransform(subMesh.vertices);
-
-            if (!subMesh.indices.empty())
-                GeometryUtils::ComputeTangents(subMesh.vertices, subMesh.indices);
-
-            modelData.subMeshes.push_back(std::move(subMesh));
-        }
-
-        return modelData;
-    }
-
-
     ModelData LoadGLTF(const std::string& filepath)
     {
         tinygltf::Model model;
@@ -128,7 +19,7 @@ namespace ModelLoader
         else if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".glb")
             ret = loader.LoadBinaryFromFile(&model, &err, &warn, filepath);
 
-        if (!warn.empty()) { std::cout <<"WARN :  " << warn << std::endl; }
+        if (!warn.empty()) { std::cout << "WARN :  " << warn << std::endl; }
         if (!err.empty()) { std::cout << "ERR :  " << err << std::endl; }
         if (!ret) return {};
 
@@ -187,7 +78,7 @@ namespace ModelLoader
                 // 因为 yToZ 会在子节点的 worldTransform 计算中再次应用
             };
 
-		// 只加载默认场景（如果有），或者第一个场景
+        // 只加载默认场景（如果有），或者第一个场景
         if (!model.scenes.empty())
         {
             int sceneIdx = (model.defaultScene >= 0) ? model.defaultScene : 0;
@@ -229,7 +120,7 @@ namespace ModelLoader
 
                 for (size_t v = 0; v < count; v++)
                 {
-					const float* f = reinterpret_cast<const float*>(posData + v * stride);          // 直接用float*访问？
+                    const float* f = reinterpret_cast<const float*>(posData + v * stride);          // 直接用float*访问？
                     glm::vec3 localPos(f[0], f[1], f[2]);
                     subMesh.vertices[v].Position = glm::vec3(worldTransform * glm::vec4(localPos, 1.0f));
                 }
@@ -259,7 +150,7 @@ namespace ModelLoader
 
                 // --- UV ---
                 auto uvIt = prim.attributes.find("TEXCOORD_0");
-				bool hasUVs = (uvIt != prim.attributes.end());
+                bool hasUVs = (uvIt != prim.attributes.end());
 
                 if (hasUVs)
                 {
@@ -380,41 +271,36 @@ namespace ModelLoader
                     // Albedo（漫反射/基础颜色纹理）
                     if (pbr.baseColorTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, pbr.baseColorTexture.index, true);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Albedo, path ,GeometryUtils::GetSamplerInfo(model,pbr.baseColorTexture.index, true) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, pbr.baseColorTexture.index, TextureSemantic::Albedo, true);
+                        subMesh.textures.push_back(std::move(texData));
                     }
 
                     // Normal（法线纹理）
                     if (mat.normalTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.normalTexture.index, false);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Normal, path ,GeometryUtils::GetSamplerInfo(model,mat.normalTexture.index, false) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, mat.normalTexture.index, TextureSemantic::Normal, false);
+                        subMesh.textures.push_back(std::move(texData));
                     }
 
                     // MetallicRoughness（金属度/粗糙度纹理）
                     if (pbr.metallicRoughnessTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, pbr.metallicRoughnessTexture.index, false);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::MetallicRoughness, path ,GeometryUtils::GetSamplerInfo(model,pbr.metallicRoughnessTexture.index, false) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, pbr.metallicRoughnessTexture.index, TextureSemantic::MetallicRoughness, false);
+                        subMesh.textures.push_back(std::move(texData));
                     }
 
                     // Emissive（自发光纹理）
                     if (mat.emissiveTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.emissiveTexture.index, true);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Emissive, path ,GeometryUtils::GetSamplerInfo(model,mat.emissiveTexture.index, true) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, mat.emissiveTexture.index, TextureSemantic::Emissive, true);
+                        subMesh.textures.push_back(std::move(texData));
                     }
 
                     // Occlusion (AO，环境光遮蔽纹理)
                     if (mat.occlusionTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.occlusionTexture.index, false);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Occlusion, path ,GeometryUtils::GetSamplerInfo(model,mat.occlusionTexture.index, false) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, mat.occlusionTexture.index, TextureSemantic::Occlusion, false);
+                        subMesh.textures.push_back(std::move(texData));
                     }
                 }
 
@@ -423,16 +309,6 @@ namespace ModelLoader
         }
 
         return modelData;
-    }
-
-
-    ModelData LoadModel(const std::string& filepath)
-    {
-        if (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".obj")
-            return LoadOBJ(filepath);
-        else if ((filepath.size() >= 5 && filepath.substr(filepath.size() - 5) == ".gltf") || (filepath.size() >= 4 && filepath.substr(filepath.size() - 4) == ".glb"))
-				return LoadGLTF(filepath);
-        return {};
     }
 
     GLTFScene LoadGLTFScene(const std::string& filepath)
@@ -650,45 +526,39 @@ namespace ModelLoader
                     subMesh.alphaCutoff = (float)mat.alphaCutoff;
                     subMesh.doubleSided = mat.doubleSided;
 
+                    // Albedo（漫反射/基础颜色纹理）
                     if (pbr.baseColorTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, pbr.baseColorTexture.index,
-                            true);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Albedo, path,
-                                GeometryUtils::GetSamplerInfo(model, pbr.baseColorTexture.index, true) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, pbr.baseColorTexture.index, TextureSemantic::Albedo, true);
+                        subMesh.textures.push_back(std::move(texData));
                     }
+
+                    // Normal（法线纹理）
                     if (mat.normalTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.normalTexture.index,
-                            false);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Normal, path,
-                                GeometryUtils::GetSamplerInfo(model, mat.normalTexture.index, false) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, mat.normalTexture.index, TextureSemantic::Normal, false);
+                        subMesh.textures.push_back(std::move(texData));
                     }
+
+                    // MetallicRoughness（金属度/粗糙度纹理）
                     if (pbr.metallicRoughnessTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir,
-                            pbr.metallicRoughnessTexture.index, false);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::MetallicRoughness, path,
-                                GeometryUtils::GetSamplerInfo(model, pbr.metallicRoughnessTexture.index, false) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, pbr.metallicRoughnessTexture.index, TextureSemantic::MetallicRoughness, false);
+                        subMesh.textures.push_back(std::move(texData));
                     }
+
+                    // Emissive（自发光纹理）
                     if (mat.emissiveTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.emissiveTexture.index,
-                            true);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Emissive, path,
-                                GeometryUtils::GetSamplerInfo(model, mat.emissiveTexture.index, true) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, mat.emissiveTexture.index, TextureSemantic::Emissive, true);
+                        subMesh.textures.push_back(std::move(texData));
                     }
+
+                    // Occlusion (AO，环境光遮蔽纹理)
                     if (mat.occlusionTexture.index >= 0)
                     {
-                        std::string path = GeometryUtils::RegisterTexture(model, modelDir, mat.occlusionTexture.index,
-                            false);
-                        if (!path.empty())
-                            subMesh.textures.push_back({ TextureSemantic::Occlusion, path,
-                                GeometryUtils::GetSamplerInfo(model, mat.occlusionTexture.index, false) });
+                        auto texData = GeometryUtils::ExtractTextureData(model, modelDir, mat.occlusionTexture.index, TextureSemantic::Occlusion, false);
+                        subMesh.textures.push_back(std::move(texData));
                     }
                 }
 

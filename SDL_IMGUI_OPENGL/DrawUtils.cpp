@@ -97,6 +97,13 @@ namespace DrawUtils
             }
 
             const auto& nextMesh = ResourceManager::Get()->GetMesh(x.mesh);
+
+            if (!nextMesh)
+            {
+                std::cout << ResourceManager::Get()->GetTexture(x.material->GetTexture(TextureSemantic::Albedo))->GetFilePath() << std::endl;
+
+            }
+
             if (mesh != nextMesh)
             {
                 if (mesh) mesh->GetVAO()->UnBind();

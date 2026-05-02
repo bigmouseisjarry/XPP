@@ -91,3 +91,8 @@ void SceneManager::OnImGuiRender()
 
 	GameSettings::Get()->OnImGuiRender();
 }
+
+entt::registry& SceneManager::GetCurrentRegistry()
+{
+	return m_CurrentScene->GetRegistry();
+}

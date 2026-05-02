@@ -3,6 +3,7 @@
 #include <vector>
 #include <gtc/matrix_transform.hpp>
 #include "tiny_gltf.h"
+#include "stb_image.h"
 #include "ResourceManager.h"
 
 namespace GeometryUtils
@@ -293,73 +294,45 @@ namespace GeometryUtils
         return result;
     }
 
-    static std::string RegisterTexture(const tinygltf::Model& model,const std::string& modelDir,int texIndex, bool sRGB)
+    static RawTextureData ExtractTextureData(const tinygltf::Model& model, const std::string& modelDir, int texIndex, TextureSemantic semantic, bool sRGB)
     {
-        if (texIndex < 0) return "";
+        RawTextureData result;
+        result.semantic = semantic;
+        result.sampler = GetSamplerInfo(model, texIndex, sRGB);
+
         const auto& gltfTex = model.textures[texIndex];
         int imgIdx = gltfTex.source;
-        if (imgIdx < 0) return "";
+        if (imgIdx < 0) return result;
+
         const auto& img = model.images[imgIdx];
 
-        // Case 1: 外部文件 URI
-        if (!img.uri.empty() && img.uri.substr(0, 5) != "data:")
-            return modelDir + img.uri;
+        // Case 1: 外部文件 URI → stb_image 解码
+        if (!img.uri.empty() && img.uri.substr(0, 5) != "data:") {
+            std::string fullPath = modelDir + img.uri;
+            // stbi_set_flip_vertically_on_load 是 thread_local，工作线程安全
+            stbi_set_flip_vertically_on_load(1);
+            unsigned char* data = stbi_load(fullPath.c_str(), &result.width, &result.height,
+                &result.channels, 0);
 
-        // Case 2: bufferView 嵌入
-        if (img.bufferView >= 0)
-        {
-            const auto& bv = model.bufferViews[img.bufferView];
-            const auto& buf = model.buffers[bv.buffer];
-            const unsigned char* data = buf.data.data() + bv.byteOffset;
-            int len = (int)bv.byteLength;
-
-            std::string name = "__embedded__" + std::to_string(imgIdx);
-            auto* rm = ResourceManager::Get();
-            if (rm->GetTextureID(name).value != INVALID_ID)
-                return name;
-
-            int minF = GL_LINEAR, magF = GL_LINEAR, wrapS = GL_CLAMP_TO_EDGE, wrapT = GL_CLAMP_TO_EDGE;
-            if (gltfTex.sampler >= 0)
-            {
-                const auto& s = model.samplers[gltfTex.sampler];
-                if (s.minFilter >= 0) minF = s.minFilter;
-                if (s.magFilter >= 0) magF = s.magFilter;
-                if (s.wrapS >= 0)     wrapS = s.wrapS;
-                if (s.wrapT >= 0)     wrapT = s.wrapT;
+            if (data) {
+                result.name = fullPath;
+                size_t sz = (size_t)result.width * result.height * result.channels;
+                result.pixels.assign(data, data + sz);
+                stbi_image_free(data);
             }
-
-            rm->CreateTextureFromMemory(name, data, len, minF, magF, wrapS, wrapT, sRGB);
-            return name;
+            return result;
         }
 
-        // Case 3: data: URI（base64 编码）
-        if (!img.uri.empty() && img.uri.substr(0, 5) == "data:")
-        {
-            std::string name = "__embedded__" + std::to_string(imgIdx);
-            auto* rm = ResourceManager::Get();
-            if (rm->GetTextureID(name).value != INVALID_ID)
-                return name;
-
-            size_t commaPos = img.uri.find(',');
-            if (commaPos == std::string::npos) return "";
-            std::string base64 = img.uri.substr(commaPos + 1);
-            std::vector<unsigned char> decoded = Base64Decode(base64);
-
-            int minF = GL_LINEAR, magF = GL_LINEAR, wrapS = GL_CLAMP_TO_EDGE, wrapT = GL_CLAMP_TO_EDGE;
-            if (gltfTex.sampler >= 0)
-            {
-                const auto& s = model.samplers[gltfTex.sampler];
-                if (s.minFilter >= 0) minF = s.minFilter;
-                if (s.magFilter >= 0) magF = s.magFilter;
-                if (s.wrapS >= 0)     wrapS = s.wrapS;
-                if (s.wrapT >= 0)     wrapT = s.wrapT;
-            }
-
-            rm->CreateTextureFromMemory(name, decoded.data(), (int)decoded.size(), minF, magF, wrapS, wrapT, sRGB);
-            return name;
+        // Case 2 & 3: 嵌入纹理 → TinyGLTF 已解码，直接拷贝
+        // img.image, img.width, img.height, img.component 就是现成的
+        result.name = "__embedded__" + std::to_string(imgIdx);
+        result.width = img.width;
+        result.height = img.height;
+        result.channels = img.component;
+        if (!img.image.empty()) {
+            result.pixels = img.image;  // std::vector 直接拷贝
         }
-
-        return "";
+        return result;
     }
 
 }

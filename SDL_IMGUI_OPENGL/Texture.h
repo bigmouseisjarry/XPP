@@ -9,7 +9,6 @@ class Texture
 private:
 	unsigned int m_RendererID;
 	std::string m_FilePath;
-	unsigned char* m_LocalBuffer;
 	int m_Width, m_Height, m_BPP;
 	int m_cols;               // 多少列
 	int m_rows;               // 多少行
@@ -20,6 +19,8 @@ public:
 	//Texture& operator=(Texture&& other) noexcept;
 	Texture(const std::string& path, int cols = 1, int rows = 1); 
 	Texture(const std::string& path, bool isHDR);
+	// 接受原始像素 + 宽高 + 通道数 + 采样参数
+	Texture(unsigned char* pixels, int width, int height, int channels, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
 	~Texture();
 
 	void Bind(unsigned int slot = 0)const;
@@ -38,10 +39,7 @@ public:
 private:
 	Texture(float r, float g, float b, float a);
 	Texture(const float* data, int width, int height);
-	Texture(const std::string& path, int cols, int rows ,int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
-	// 从内存中加载
-	Texture(const unsigned char* data, int len, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
-	Texture() : m_RendererID(0), m_LocalBuffer(nullptr), m_Width(0), m_Height(0), m_BPP(0), m_cols(1), m_rows(1) {}
+	Texture() : m_RendererID(0), m_Width(0), m_Height(0), m_BPP(0), m_cols(1), m_rows(1) {}
 	friend class ResourceManager; 
 };
 

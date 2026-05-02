@@ -11,10 +11,13 @@
 #include "DebugRenderSystem.h"
 #include<Windows.h>
 #include <entt.hpp>
+#include "WorkerPool.h"
+#include "EntityFactory.h"
 
 static void Init()
 {
     SetConsoleOutputCP(65001);
+    WorkerPool::Get()->Init(2);
     ResourceManager::Get()->Init();
     SceneManager::Get()->Init();
     GameSettings::Get()->Init();
@@ -161,6 +164,8 @@ int main(int, char**)
         //TODO:我的结束帧逻辑执行
         SceneManager::Get()->EndFrame();
 
+        EntityFactory::ProcessAsyncLoadResults();
+
         // TODO：我的更新
         SceneManager::Get()->OnUpdate(deltaTime);
 
@@ -188,6 +193,9 @@ int main(int, char**)
         // 显示画面
         SDL_GL_SwapWindow(window);
     }
+
+    WorkerPool::Get()->Shutdown();
+    EntityFactory::ShutdownAsync();
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();

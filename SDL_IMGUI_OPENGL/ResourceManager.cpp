@@ -292,32 +292,6 @@ TextureID ResourceManager::LoadHDRTexture(const std::string& name)
     return id;
 }
 
-TextureID ResourceManager::LoadTexture(const std::string& path, int cols, int rows,
-    int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB)
-{
-    auto it = m_TextureNameToID.find(path);
-    if (it != m_TextureNameToID.end()) return it->second;
-
-    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
-    m_Textures.emplace_back(std::unique_ptr<Texture>(
-        new Texture(path, cols, rows, minFilter, magFilter, wrapS, wrapT, sRGB)));
-    m_TextureNameToID[path] = id;
-    return id;
-}
-
-TextureID ResourceManager::CreateTextureFromMemory(const std::string& name, const unsigned char* data, int len, 
-    int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB)
-{
-    auto it = m_TextureNameToID.find(name);
-    if (it != m_TextureNameToID.end()) return it->second;
-
-    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
-    m_Textures.emplace_back(std::unique_ptr<Texture>(
-        new Texture(data, len, minFilter, magFilter, wrapS, wrapT, sRGB)));
-    m_TextureNameToID[name] = id;
-    return id;
-}
-
 TextureID ResourceManager::CreateNoiseTexture(const std::string& name, int width, int height)
 {
     // 生成随机半球采样向量
@@ -342,6 +316,17 @@ TextureID ResourceManager::CreateNoiseTexture(const std::string& name, int width
     return id;
 }
 
+TextureID ResourceManager::CreateTextureFromPixels(const std::string& name, unsigned char* pixels, int width, int height, int channels, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB)
+{
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
+    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
+    m_Textures.emplace_back(std::make_unique<Texture>(pixels, width, height, channels, minFilter, magFilter, wrapS, wrapT, sRGB));
+    m_TextureNameToID[name] = id;
+    return id;
+}
+
 FramebufferID ResourceManager::CreateFramebuffer(const std::string& name, int width, int height)
 {
     FramebufferSpec spec;
@@ -362,6 +347,17 @@ FramebufferID ResourceManager::CreateFramebuffer(const std::string& name, const 
     m_FramebufferNameToID[name] = id;
     return id;
 
+}
+MeshID ResourceManager::CreateMeshFromBlob(const std::string& name, const std::vector<uint8_t>& vertexBlob, size_t vertexSize, const std::vector<unsigned int>& indices, VertexType vertexType)
+{
+    auto it = m_MeshNameToID.find(name);
+    if (it != m_MeshNameToID.end()) return it->second;
+ 
+    auto mesh = std::make_unique<Mesh>(vertexBlob.data(), vertexBlob.size(), indices.data(), vertexType, indices.size());
+    MeshID id{ static_cast<uint32_t>(m_Meshes.size()) };
+    m_Meshes.push_back(std::move(mesh));
+    m_MeshNameToID[name] = id;
+    return id;
 }
 ShaderID ResourceManager::GetShaderID(const std::string& name) const
 {

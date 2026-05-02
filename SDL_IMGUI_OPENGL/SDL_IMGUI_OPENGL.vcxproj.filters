@@ -100,6 +100,9 @@
     <Filter Include="资源文件\后处理shader">
       <UniqueIdentifier>{29994ff3-3230-456e-93d9-4357b5255090}</UniqueIdentifier>
     </Filter>
+    <Filter Include="线程管理">
+      <UniqueIdentifier>{d547550d-40ef-46de-8e7b-cb34b7afb34c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ComRender.h">
@@ -267,6 +270,12 @@
     <ClInclude Include="SkyboxPass.h">
       <Filter>渲染引擎\pass\具体的pass</Filter>
     </ClInclude>
+    <ClInclude Include="WorkerPool.h">
+      <Filter>线程管理</Filter>
+    </ClInclude>
+    <ClInclude Include="GLCommandQueue.h">
+      <Filter>线程管理</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EntityFactory.cpp">
@@ -394,6 +403,12 @@
     </ClCompile>
     <ClCompile Include="SkyboxPass.cpp">
       <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="WorkerPool.cpp">
+      <Filter>线程管理</Filter>
+    </ClCompile>
+    <ClCompile Include="GLCommandQueue.cpp">
+      <Filter>线程管理</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

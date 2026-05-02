@@ -18,61 +18,55 @@ struct SamplerInfo
     bool valid = false;             // false = Texture 构造函数用默认值
 };
 
-struct TextureInfo
-{
+struct RawTextureData {
+    std::string name;
+    // 外部文件：stbi_load 解码后的像素，unique_ptr 自动 stbi_image_free
+    // 嵌入纹理：直接引用 model.images 的数据，这里不需要持有多余内存
+    // 统一用 vector<uint8_t> 拷贝持有，因为 tinygltf::Model 在函数返回后就销毁了
+    std::vector<unsigned char> pixels;
+    int width, height, channels;
     TextureSemantic semantic;
-    std::string path;  // 相对于模型目录的纹理路径
     SamplerInfo sampler;
 };
 
-struct SubMeshData
-{
+struct SubMeshData {
     std::string name;
     std::vector<Vertex3D> vertices;
     std::vector<unsigned int> indices;
-    std::vector<TextureInfo> textures;
-    glm::vec4 diffuseColor = { 1,1,1,1 };       // 漫反射反照率（Kd） + 透明度（d）
-    float metallicFactor = 1.0f;                // 金属度因子
-    float roughnessFactor = 1.0f;               // 粗糙度因子
-    glm::vec3 emissiveFactor = { 0,0,0 };       // 自发光颜色强度
-    int   alphaMode = 0;                        // 0=OPAQUE, 1=MASK 镂空模式 , 2=BLEND
-    float alphaCutoff = 0.5f;                   // MASK:纹理 Alpha 值低于 0.5 的像素直接被丢弃
-    bool  doubleSided = false;                  // 双面渲染
+    std::vector<RawTextureData> textures;   // 已解码的纹理像素（替代 TextureInfo 的路径）
+    glm::vec4 diffuseColor = { 1,1,1,1 };
+    float metallicFactor = 1.0f;
+    float roughnessFactor = 1.0f;
+    glm::vec3 emissiveFactor = { 0,0,0 };
+    int alphaMode = 0;
+    float alphaCutoff = 0.5f;
+    bool doubleSided = false;
 };
 
-struct ModelData
-{
+struct ModelData {
     std::vector<SubMeshData> subMeshes;
 };
 
-struct NodeData
-{
+// NodeData 不变，但子网格用 CPUSubMeshData
+struct NodeData {
     std::string name;
-    int meshIndex = -1;         // glTF mesh index（引用用）
-    std::vector<int> children;  // 子节点在 GLTFScene::nodes 中的索引
-
-    // 变换：优先使用 TRS，仅 useMatrix=true 时使用 matrix
+    int meshIndex = -1;
+    std::vector<int> children;
     bool useMatrix = false;
     glm::mat4 matrix = glm::mat4(1.0f);
     glm::vec3 translation = { 0, 0, 0 };
-    glm::quat rotation = glm::quat(1, 0, 0, 0);  // w,x,y,z
+    glm::quat rotation = glm::quat(1, 0, 0, 0);
     glm::vec3 scale = { 1, 1, 1 };
-
-    // 该节点的子网格数据（顶点在局部空间，不含节点变换）
     std::vector<SubMeshData> subMeshes;
 };
 
-struct GLTFScene
-{
+struct GLTFScene {
     std::vector<NodeData> nodes;
-    std::vector<int> rootNodes;  // 场景根节点索引
+    std::vector<int> rootNodes;
 };
 
 namespace ModelLoader
 {
-    ModelData LoadOBJ(const std::string& filepath);
     ModelData LoadGLTF(const std::string& filepath);
-    ModelData LoadModel(const std::string& filepath);  // 按扩展名分发
-
     GLTFScene LoadGLTFScene(const std::string& filepath);
 }

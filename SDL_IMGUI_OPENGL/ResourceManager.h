@@ -61,14 +61,17 @@ public:
     TextureID LoadTexture(const std::string& path, int cols = 1, int rows = 1);
     TextureID LoadDefaultTexture(const std::string& name, float r, float g, float b, float a);      // TUDO: 这几个加载纹理可以合并一下
     TextureID LoadHDRTexture(const std::string& name);
-    TextureID LoadTexture(const std::string& path, int cols, int rows, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
-    TextureID CreateTextureFromMemory(const std::string& name, const unsigned char* data, int len, int minFilter, int magFilter, int wrapS, int wrapT, bool sRGB);
     TextureID CreateNoiseTexture(const std::string& name, int width, int height);
+    TextureID CreateTextureFromPixels(const std::string& name, unsigned char* pixels, int width, int height, int channels, int minFilter, int magFilter,
+        int wrapS, int wrapT, bool sRGB);
+
 
     template<typename VertexT>
     MeshID CreateMesh(const std::string& name, const std::vector<VertexT>& vertices, const std::vector<unsigned int>& indices);
     FramebufferID CreateFramebuffer(const std::string& name, int width, int height);
     FramebufferID CreateFramebuffer(const std::string& name, const FramebufferSpec& spec);
+    MeshID CreateMeshFromBlob(const std::string& name, const std::vector<uint8_t>& vertexBlob, size_t vertexSize, const std::vector<unsigned int>& indices,
+        VertexType vertexType);
 
     // ========== 名称查找==========
     ShaderID   GetShaderID(const std::string& name) const;

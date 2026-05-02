@@ -149,6 +149,7 @@
     <ClInclude Include="FullscreenQuad.h" />
     <ClInclude Include="GameSettings.h" />
     <ClInclude Include="GeometryUtils.h" />
+    <ClInclude Include="GLCommandQueue.h" />
     <ClInclude Include="HierarchyUtils.h" />
     <ClInclude Include="IndexBuffer.h" />
     <ClInclude Include="InputManager.h" />
@@ -190,6 +191,7 @@
     <ClInclude Include="VertexArray.h" />
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VertexBufferLayout.h" />
+    <ClInclude Include="WorkerPool.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\扩展库\imgui\imgui.cpp" />
@@ -205,6 +207,7 @@
     <ClCompile Include="EntityFactory.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="GameSettings.cpp" />
+    <ClCompile Include="GLCommandQueue.cpp" />
     <ClCompile Include="IndexBuffer.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
@@ -234,6 +237,7 @@
     <ClCompile Include="UniformBuffer.cpp" />
     <ClCompile Include="VertexArray.cpp" />
     <ClCompile Include="VertexBuffer.cpp" />
+    <ClCompile Include="WorkerPool.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader.glsl" />

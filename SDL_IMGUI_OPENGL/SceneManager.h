@@ -28,6 +28,8 @@ public:
 	void OnRender()const;
 	void OnImGuiRender();
 
+	entt::registry& GetCurrentRegistry();
+
 private:
 	SceneManager() {}
 	~SceneManager() {}

@@ -14,4 +14,15 @@ namespace EntityFactory {
     entt::entity CreateCube(entt::registry& registry);
     entt::entity CreateAxis(entt::registry& registry);
     entt::entity CreateModelHierarchy(entt::registry& registry, const std::string& filepath);
+
+    // 异步版本：立即返回，后台加载
+    void CreateModel3DAsync(const std::string& filepath);
+    void CreateModelHierarchyAsync(const std::string& filepath);
+
+    // 主线程每帧调用：检查异步加载是否完成，完成则创建 Entity
+    void ProcessAsyncLoadResults();
+
+    // 退出时清理
+    void ShutdownAsync();
+
 }
