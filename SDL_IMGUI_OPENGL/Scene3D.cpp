@@ -1,4 +1,4 @@
-#include "StoryScene.h"
+#include "Scene3D.h"
 #include "GameSettings.h"
 #include "EntityFactory.h"
 #include "ComCamera.h"
@@ -9,15 +9,17 @@
 #include "PhysicsSystem.h"
 #include "ComGameplay.h"
 #include "DebugRenderSystem.h"
+#include "ComParticle.h"
+#include "ParticleSystem.h"
 
 
-StoryScene::StoryScene(SceneName sceneName)
-	:Scene(sceneName)
+Scene3D::Scene3D(SceneID sceneID)
+	:Scene(sceneID)
 {
 
 }
 
-void StoryScene::Enter()
+void Scene3D::Enter()
 {
 	// Light 
 	auto lightEntity = EntityFactory::CreateLight3D(m_Registry, glm::vec3(12.0f, 12.0f, 12.0f));
@@ -38,7 +40,7 @@ void StoryScene::Enter()
 	
 	auto cube = EntityFactory::CreateCube(m_Registry);
 	auto& cubeTrans = m_Registry.get<Transform3DComponent>(cube);
-	cubeTrans.SetScale(glm::vec3(20.0f, 20.0f, 1.0f));
+	cubeTrans.SetScale(glm::vec3(200.0f, 200.0f, 1.0f));
 
 	auto Axis = EntityFactory::CreateAxis(m_Registry);
 
@@ -64,18 +66,37 @@ void StoryScene::Enter()
 		transform.rotation, physics.colliderSize, physics.colliderOffset);
 	m_Registry.get<Camera3DComponent>(camEntity).SetOrbitTarget(obb.center, boundingRadius);
 
-	Renderer::Get()->InitPipeline(true);
+	auto emitterEntity = m_Registry.create();
+	m_Registry.emplace<TagComponent>(emitterEntity, TagComponent{ "ParticleEmitter" });
+	m_Registry.emplace<Transform3DComponent>(emitterEntity);
+
+	auto& emitter = m_Registry.emplace<ParticleEmitterComponent>(emitterEntity);
+	emitter.is3D = true;
+	emitter.m_Material->Set("u_Dimension", (int)1);
+	emitter.emitRate = 50.0f;
+	emitter.maxParticles = 200;
+	emitter.lifetimeMin = 0.5f;
+	emitter.lifetimeMax = 1.5f;
+	emitter.speedMin = 2.0f;
+	emitter.speedMax = 5.0f;
+	emitter.direction = { 0, 0, 1 };
+	emitter.gravity = { 0, 0, -2.0f };
+	emitter.particleTexture = ResourceManager::Get()->GetTextureID("defaultParticle");
+	emitter.additiveBlend = true;
+	emitter.colorOverLifetime = { {0.0f, {1,0.8f,0.2f,1}}, {1.0f, {1,0.2f,0,0}} };
+	emitter.sizeOverLifetime = { {0.0f, 1.0f}, {1.0f, 0.1f} };
+
 }
 
-void StoryScene::OnEvent(SDL_Event& event)
+void Scene3D::OnEvent(SDL_Event& event)
 {
 }
 
-void StoryScene::OnUpdate(float deltaTime)
+void Scene3D::OnUpdate(float deltaTime)
 {
 	// 相机输入 — 从 registry 获取
-	auto camView = m_Registry.view<Camera3DComponent>();
-	for (auto [entity, cam] : camView.each()) {
+	auto camView = m_Registry.view<Camera3DComponent, Transform3DComponent>();
+	for (auto [entity, cam,tr] : camView.each()) {
 		if (GameSettings::Get()->IsActionPressed(InputAction::CameraZoomOut) ||
 			GameSettings::Get()->IsActionPressed(InputAction::CameraZoomIn)) {
 			cam.Dolly(GameSettings::Get()->GetMouseState().wheelDelta);
@@ -98,10 +119,24 @@ void StoryScene::OnUpdate(float deltaTime)
 
 	CameraSystem::Update(m_Registry);
 
+	ParticleSystem::Get()->Update(m_Registry, deltaTime);
+
 	DestroySystem::Update(m_Registry);
+
+	//// 从摄像机位置向前发射射线
+	//for (auto [entity, cam, transform] : camView.each()) {
+	//	glm::vec3 origin = transform.position;
+	//	glm::vec3 dir = cam.GetForward();  // 需要摄像机有前方向量
+	//	RaycastHit hit = PhysicsSystem::Get()->Raycast(m_Registry, origin, dir, 100.0f);
+	//	if (hit.entity != entt::null) {
+	//		auto& tag = m_Registry.get<TagComponent>(hit.entity);
+	//		std::cout << "命中: " << tag.name << " 距离: " << hit.distance << std::endl;
+	//	}
+	//}
+
 }
 
-void StoryScene::OnImGuiRender()
+void Scene3D::OnImGuiRender()
 {
 	auto entity_tag =  m_Registry.view<TagComponent>();
 	entt::entity m_entity;
@@ -132,10 +167,23 @@ void StoryScene::OnImGuiRender()
 		lightIndex++;
 	}
 	ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+	ImGui::Begin("Debug");
+	auto view = m_Registry.view<ParticleEmitterComponent>();
+	for (auto [entity, emitter] : view.each())
+	{
+		if (!emitter.isPlaying) continue;
+		ImGui::Text("粒子数 %d", (int)emitter.m_Particles.size());
+		for (auto& p : emitter.m_Particles)
+		{
+			//std::cout << " 位置： " << p.position.x << " " << p.position.y << " " << p.position.z << std::endl;
+			//std::cout << " 大小：" << p.size << std::endl;
+		}
+	}
+	ImGui::End();
 	ImGui::End();
 }
 
-void StoryScene::OnRender()
+void Scene3D::OnRender()
 {
 
 	RenderSubmitSystem::SubmitCameras(m_Registry);
@@ -145,6 +193,8 @@ void StoryScene::OnRender()
 	DebugRenderSystem::SubmitColliderBoxes(m_Registry);
 
 	DebugRenderSystem::SubmitLightRanges(m_Registry);
+
+	ParticleSystem::Get()->SubmitRender(m_Registry);
 
 	// 收集 registry 中的 lights
 	std::vector<Light3DComponent*> lights;
@@ -156,7 +206,12 @@ void StoryScene::OnRender()
 	Renderer::Get()->Flush(lights);
 }
 
-void StoryScene::Quit()
+void Scene3D::Quit()
 {
 	Scene::Quit();
+}
+
+void Scene3D::BuildPipeline(RenderPipeline& pipeline)
+{
+	Scene::BuildDefaultPipeline3D(pipeline);
 }

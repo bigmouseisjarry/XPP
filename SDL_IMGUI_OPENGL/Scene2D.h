@@ -7,12 +7,12 @@
 #include "Map.h"
 #include "Scene.h"
 
-class BattleScene : public Scene
+class Scene2D : public Scene
 {
 private:
 	Map m_map;
 public:
-	BattleScene(SceneName sceneName);
+	Scene2D(SceneID sceneID);
 
 	void Enter() override;
 	void OnEvent(SDL_Event& event)override;
@@ -20,4 +20,6 @@ public:
 	void OnImGuiRender()override;
 	void OnRender() override;
 	void Quit()override;
+
+	void BuildPipeline(RenderPipeline& pipeline) override;
 };

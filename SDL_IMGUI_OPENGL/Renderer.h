@@ -21,6 +21,8 @@ private:
 	std::vector<CameraUnit> m_Camera2DUnits;
 	std::vector<CameraUnit> m_Camera3DUnits;
 
+	std::vector<InstancedRenderUnit> m_InstancedUnits;
+
 	std::unique_ptr<UniformBuffer> m_PerFrameUBO;
 	std::unique_ptr<UniformBuffer> m_PerObjectUBO;
 	std::unique_ptr<UniformBuffer> m_LightUBO;
@@ -52,13 +54,17 @@ public:
 	void SortAll();
 	void Flush(const std::vector<Light3DComponent*>& lights);  //TODO:不应该传值
 
-	void InitPipeline(bool has3D);   
+	void SetShadowArrayFBOID(FramebufferID id) { m_ShadowArrayFBOID = id; }
+	void SetSkyboxTexID(TextureID id) { m_SkyboxTexID = id; }
+	void SetSSAOKernelUBO(std::unique_ptr<UniformBuffer> ubo) { m_SSAOKernelUBO = std::move(ubo); }
+	void SetPipeline(std::unique_ptr<RenderPipeline> pipeline) { m_Pipeline = std::move(pipeline); }
 
 	void SetWindowSize(int w, int h);
 	void RegisterIntermediateFBO(FramebufferID fboID, float scaleX = 1.0f, float scaleY = 1.0f);
 
 	void SubmitCameraUnits(const glm::mat4& projView, const std::vector<RenderLayer>& layers,RenderMode mode, const glm::vec3& viewPos = glm::vec3(0.0f));
 	void SubmitRenderUnits(const MeshID& mesh, const Material* material,const glm::mat4& model,RenderLayer renderlayer = RenderLayer::RQ_WorldBackground);
+	void SubmitInstancedUnits(MeshID mesh, const Material* material, RenderLayer layer, unsigned int instanceCount, bool additiveBlend);
 
 private:
 	Renderer() {}

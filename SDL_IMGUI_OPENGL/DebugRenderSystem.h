@@ -6,6 +6,7 @@
 #include "ResourceManager.h"
 #include "Material.h"
 #include <gtc/matrix_transform.hpp>
+#include "PhysicsSystem.h"
 
 namespace DebugRenderSystem
 {
@@ -35,17 +36,17 @@ namespace DebugRenderSystem
             return m;
             }();
 
-        auto view = registry.view<Transform3DComponent, Physics3DComponent>();
-        for (auto [entity, transform, physics] : view.each())
+        auto view = registry.view<Physics3DComponent>();
+        for (auto [entity, physics] : view.each())
         {
             if (!physics.isCollisionEnabled) continue;
 
-            OBB obb = ComputeOBB(transform.position, transform.scale,
-                transform.rotation, physics.colliderSize, physics.colliderOffset);
+            const OBB* obb = PhysicsSystem::Get()->GetOBB(entity);
+            if (!obb) continue;
 
-            glm::mat4 model = glm::translate(glm::mat4(1.0f), obb.center);
-            model = model * glm::mat4(obb.orientation);
-            model = glm::scale(model, obb.halfExtents * 2.0f);
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), obb->center);
+            model = model * glm::mat4(obb->orientation);
+            model = glm::scale(model, obb->halfExtents * 2.0f);
 
             Renderer::Get()->SubmitRenderUnits(s_ColliderMeshID, &debugMat, model, RenderLayer::RQ_WorldObjects);
         }

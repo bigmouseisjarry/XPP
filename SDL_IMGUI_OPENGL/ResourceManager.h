@@ -68,6 +68,8 @@ public:
 
     template<typename VertexT>
     MeshID CreateMesh(const std::string& name, const std::vector<VertexT>& vertices, const std::vector<unsigned int>& indices);
+    MeshID CreateInstancedMesh(const std::string& name, const Mesh& sharedMesh, std::unique_ptr<VertexBuffer> instanceVBO, const VertexBufferLayout& instanceLayout,
+        unsigned int maxInstances);
     FramebufferID CreateFramebuffer(const std::string& name, int width, int height);
     FramebufferID CreateFramebuffer(const std::string& name, const FramebufferSpec& spec);
     MeshID CreateMeshFromBlob(const std::string& name, const std::vector<uint8_t>& vertexBlob, size_t vertexSize, const std::vector<unsigned int>& indices,
@@ -85,6 +87,7 @@ public:
     const Framebuffer* GetFramebuffer(FramebufferID id) const;
     Framebuffer* GetFramebufferMut(FramebufferID id);
     const Mesh* GetMesh(MeshID id) const;
+    Mesh* GetMeshMut(MeshID id);
 
 private:
     ResourceManager() = default;

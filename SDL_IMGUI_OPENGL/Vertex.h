@@ -5,7 +5,8 @@ enum class VertexType
 {
 	Vertex2D,
 	Vertex3D,
-	VertexLine
+	VertexLine,
+	VertexParticle
 };
 
 struct Vertex
@@ -27,4 +28,14 @@ struct VertexLine
 {
 	glm::vec3 Position;
 	glm::vec4 Color;
+};
+
+struct VertexParticleInstance
+{
+	glm::vec3 position;     // 世界/屏幕位置
+	glm::vec4 color;        // RGBA
+	float     size;         // 缩放大小
+	float     rotation;     // 旋转角度（弧度）
+	glm::vec2 uvOffset;     // 精灵表 UV 偏移
+	glm::vec2 uvScale;      // 精灵表 UV 缩放
 };

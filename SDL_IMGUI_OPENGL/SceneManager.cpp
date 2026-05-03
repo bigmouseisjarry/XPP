@@ -1,5 +1,7 @@
 #include "SceneManager.h"
-#include "StoryScene.h"
+#include "Scene2D.h"
+#include "Scene3D.h"
+#include "Renderer.h"
 
 SceneManager* SceneManager::Get()
 {
@@ -7,19 +9,29 @@ SceneManager* SceneManager::Get()
 	return &instance;
 }
 
-void SceneManager::RegisterScene(SceneName sceneName, std::unique_ptr<Scene> Scene)
+void SceneManager::RegisterScene(SceneID sceneID, std::unique_ptr<Scene> Scene)
 {
-	m_Scenes[sceneName] = std::move(Scene);
+	m_Scenes[sceneID] = std::move(Scene);
 }
 
-void SceneManager::SceneChange(SceneName targetScene)
+void SceneManager::SceneChange(SceneID targetScene)
 {
 	if (m_Scenes.find(targetScene) != m_Scenes.end())
 	{
 		if (m_CurrentScene != nullptr)
 			m_CurrentScene->Quit();
+
+		// 重置 Renderer 中上一场景的管线状态
+		Renderer::Get()->SetShadowArrayFBOID({ INVALID_ID });
+		Renderer::Get()->SetSkyboxTexID({ INVALID_ID });
+		Renderer::Get()->SetSSAOKernelUBO(nullptr);
+
+		// 创建空管线，让场景填充
+		auto pipeline = std::make_unique<RenderPipeline>();
 		m_CurrentScene = m_Scenes[targetScene].get();
-		m_CurrentScene->Enter();
+		m_CurrentScene->Enter();                         // 先初始化场景实体
+		m_CurrentScene->BuildPipeline(*pipeline);        // 再构建管线
+		Renderer::Get()->SetPipeline(std::move(pipeline));
 	}
 	else
 	{
@@ -29,9 +41,9 @@ void SceneManager::SceneChange(SceneName targetScene)
 
 void SceneManager::Init()
 {
-	RegisterScene(SceneName::Battle, std::make_unique<BattleScene>(SceneName::Battle));
-	RegisterScene(SceneName::Story, std::make_unique<StoryScene>(SceneName::Story));
-	SceneChange(SceneName::Story);
+	RegisterScene(SceneID::Mode2D, std::make_unique<Scene2D>(SceneID::Mode2D));
+	RegisterScene(SceneID::Mode3D, std::make_unique<Scene3D>(SceneID::Mode3D));
+	SceneChange(SceneID::Mode3D);
 }
 
 void SceneManager::BeginFrame()

@@ -49,12 +49,6 @@
     <Filter Include="游戏输入控制\全局设置">
       <UniqueIdentifier>{57eacb44-52e3-4ba4-b76e-1232296d898b}</UniqueIdentifier>
     </Filter>
-    <Filter Include="场景管理\战斗场景">
-      <UniqueIdentifier>{36b209dd-deed-419b-8623-6751dd444deb}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="场景管理\战斗场景\地图">
-      <UniqueIdentifier>{5e888b11-bb53-4684-9e24-4b15c04f12a7}</UniqueIdentifier>
-    </Filter>
     <Filter Include="场景管理\物理模拟">
       <UniqueIdentifier>{8f797842-8feb-45a4-af19-37f3988324de}</UniqueIdentifier>
     </Filter>
@@ -69,9 +63,6 @@
     </Filter>
     <Filter Include="场景管理\场景基类">
       <UniqueIdentifier>{d9247c3f-f6b2-461e-b76a-1e47893e522f}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="场景管理\剧情场景">
-      <UniqueIdentifier>{c2e2871b-e189-43cd-bca4-37304401bf66}</UniqueIdentifier>
     </Filter>
     <Filter Include="渲染引擎\mesh">
       <UniqueIdentifier>{4551991a-48ff-4d3e-9dda-34fd230ef6e3}</UniqueIdentifier>
@@ -102,6 +93,21 @@
     </Filter>
     <Filter Include="线程管理">
       <UniqueIdentifier>{d547550d-40ef-46de-8e7b-cb34b7afb34c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\3D场景">
+      <UniqueIdentifier>{c2e2871b-e189-43cd-bca4-37304401bf66}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\2D场景">
+      <UniqueIdentifier>{36b209dd-deed-419b-8623-6751dd444deb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\2D场景\地图">
+      <UniqueIdentifier>{5e888b11-bb53-4684-9e24-4b15c04f12a7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\粒子系统">
+      <UniqueIdentifier>{bff55767-4292-4ae1-aee3-5c6587a8708a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="场景管理\粒子系统\粒子组件">
+      <UniqueIdentifier>{0102df44-d2a9-46aa-b4f9-f230ffd8882e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -165,11 +171,11 @@
     <ClInclude Include="Settings.h">
       <Filter>游戏输入控制\全局设置</Filter>
     </ClInclude>
-    <ClInclude Include="BattleScene.h">
-      <Filter>场景管理\战斗场景</Filter>
+    <ClInclude Include="Scene2D.h">
+      <Filter>场景管理\2D场景</Filter>
     </ClInclude>
     <ClInclude Include="Map.h">
-      <Filter>场景管理\战斗场景\地图</Filter>
+      <Filter>场景管理\2D场景\地图</Filter>
     </ClInclude>
     <ClInclude Include="OBB.h">
       <Filter>场景管理\物理模拟</Filter>
@@ -192,8 +198,8 @@
     <ClInclude Include="Scene.h">
       <Filter>场景管理\场景基类</Filter>
     </ClInclude>
-    <ClInclude Include="StoryScene.h">
-      <Filter>场景管理\剧情场景</Filter>
+    <ClInclude Include="Scene3D.h">
+      <Filter>场景管理\3D场景</Filter>
     </ClInclude>
     <ClInclude Include="IndexBuffer.h">
       <Filter>渲染引擎\mesh</Filter>
@@ -276,6 +282,12 @@
     <ClInclude Include="GLCommandQueue.h">
       <Filter>线程管理</Filter>
     </ClInclude>
+    <ClInclude Include="ComParticle.h">
+      <Filter>场景管理\粒子系统\粒子组件</Filter>
+    </ClInclude>
+    <ClInclude Include="ParticleSystem.h">
+      <Filter>场景管理\粒子系统</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EntityFactory.cpp">
@@ -341,11 +353,11 @@
     <ClCompile Include="Settings.cpp">
       <Filter>游戏输入控制\全局设置</Filter>
     </ClCompile>
-    <ClCompile Include="BattleScene.cpp">
-      <Filter>场景管理\战斗场景</Filter>
+    <ClCompile Include="Scene2D.cpp">
+      <Filter>场景管理\2D场景</Filter>
     </ClCompile>
     <ClCompile Include="Map.cpp">
-      <Filter>场景管理\战斗场景\地图</Filter>
+      <Filter>场景管理\2D场景\地图</Filter>
     </ClCompile>
     <ClCompile Include="PhysicsSystem.cpp">
       <Filter>场景管理\物理模拟</Filter>
@@ -353,8 +365,8 @@
     <ClCompile Include="ComLight.cpp">
       <Filter>场景管理\灯光组件</Filter>
     </ClCompile>
-    <ClCompile Include="StoryScene.cpp">
-      <Filter>场景管理\剧情场景</Filter>
+    <ClCompile Include="Scene3D.cpp">
+      <Filter>场景管理\3D场景</Filter>
     </ClCompile>
     <ClCompile Include="IndexBuffer.cpp">
       <Filter>渲染引擎\mesh</Filter>
@@ -410,6 +422,15 @@
     <ClCompile Include="GLCommandQueue.cpp">
       <Filter>线程管理</Filter>
     </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>场景管理\场景基类</Filter>
+    </ClCompile>
+    <ClCompile Include="ParticleSystem.cpp">
+      <Filter>场景管理\粒子系统</Filter>
+    </ClCompile>
+    <ClCompile Include="ComParticle.cpp">
+      <Filter>场景管理\粒子系统\粒子组件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader.glsl">
@@ -455,6 +476,9 @@
       <Filter>资源文件\后处理shader</Filter>
     </None>
     <None Include="ShaderFXAA.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderParticle.glsl">
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>

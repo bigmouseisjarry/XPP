@@ -27,6 +27,7 @@ void ResourceManager::Init()
     LoadShader("ShaderSSAO.glsl");
     LoadShader("ShaderSSAOBlur.glsl");
 	LoadShader("ShaderFXAA.glsl");
+    LoadShader("ShaderParticle.glsl");
 
     // 注册 texture
     LoadTexture("resources/idle/leftidle.png", 10, 1);
@@ -223,6 +224,28 @@ void ResourceManager::Init()
             }
         }
 
+        {
+            unsigned char pixels[32 * 32 * 4];
+            for (int y = 0; y < 32; y++)
+            {
+                for (int x = 0; x < 32; x++)
+                {
+                    float dx = (x - 15.5f) / 15.5f;
+                    float dy = (y - 15.5f) / 15.5f;
+                    float dist = sqrtf(dx * dx + dy * dy);
+                    float alpha = std::max(0.0f, 1.0f - dist);
+                    int i = (y * 32 + x) * 4;
+                    pixels[i] = 255;
+                    pixels[i + 1] = 255;
+                    pixels[i + 2] = 255;
+                    pixels[i + 3] = (unsigned char)(alpha * 255.0f);
+                }
+            }
+            CreateTextureFromPixels("defaultParticle", pixels, 32, 32, 4,
+                GL_LINEAR, GL_LINEAR, GL_CLAMP_TO_EDGE, GL_CLAMP_TO_EDGE, false);
+        }
+
+
         CreateMesh("DebugWireSphere", vertices, indices);
     }
 
@@ -327,6 +350,21 @@ TextureID ResourceManager::CreateTextureFromPixels(const std::string& name, unsi
     return id;
 }
 
+MeshID ResourceManager::CreateInstancedMesh(const std::string& name, const Mesh& sharedMesh, std::unique_ptr<VertexBuffer> instanceVBO, const VertexBufferLayout& instanceLayout, unsigned int maxInstances)
+{
+    auto it = m_MeshNameToID.find(name);
+    if (it != m_MeshNameToID.end())
+        return it->second;
+
+    auto mesh = std::make_unique<Mesh>(
+        sharedMesh, std::move(instanceVBO), instanceLayout, maxInstances);
+
+    MeshID id{ static_cast<uint32_t>(m_Meshes.size()) };
+    m_Meshes.push_back(std::move(mesh));
+    m_MeshNameToID[name] = id;
+    return id;
+}
+
 FramebufferID ResourceManager::CreateFramebuffer(const std::string& name, int width, int height)
 {
     FramebufferSpec spec;
@@ -408,6 +446,12 @@ Framebuffer* ResourceManager::GetFramebufferMut(FramebufferID id)
 }
 
 const Mesh* ResourceManager::GetMesh(MeshID id) const
+{
+    if (id.value >= m_Meshes.size())return nullptr;
+    return m_Meshes[id.value].get();
+}
+
+Mesh* ResourceManager::GetMeshMut(MeshID id)
 {
     if (id.value >= m_Meshes.size())return nullptr;
     return m_Meshes[id.value].get();

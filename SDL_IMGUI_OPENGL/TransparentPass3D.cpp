@@ -37,6 +37,7 @@ void TransparentPass3D::Execute(RenderContext& ctx)
 			auto& vec = ctx.renderUnits[layer];
 
 			DrawUtils::DrawUnits(vec, true, cam.projView, cam.viewPos, ctx.lights, ctx.lightUBO, ctx.perFrameUBO, ctx.perObjectUBO);
+			DrawUtils::DrawInstancedUnits(ctx.instancedUnits, cam.projView, cam.viewPos, ctx.perFrameUBO);
 		}
 	}
 }

@@ -6,6 +6,7 @@
 #include "ComRender.h"
 #include "GameSettings.h"
 #include "HierarchyUtils.h"
+#include "PhysicsSystem.h"
 
 namespace AssistSystem {
 
@@ -237,7 +238,9 @@ void RenderSubmitSystem::SubmitEntities(entt::registry& registry)
     {
         if (!visible.isVisible) continue;
         if (auto* phys = registry.try_get<Physics3DComponent>(entity)) {
-            if (! AssistSystem::FrustumTestOBB(cam->frustumPlanes, phys->worldOBB)) continue;
+            const OBB* obb = PhysicsSystem::Get()->GetOBB(entity);
+            if (!obb)continue;
+            if (! AssistSystem::FrustumTestOBB(cam->frustumPlanes, *obb)) continue;
         }
         Renderer::Get()->SubmitRenderUnits(
             visible.mesh, visible.material.get(), transform.GetWorldMatrix(registry), visible.renderLayer);
@@ -248,7 +251,9 @@ void RenderSubmitSystem::SubmitEntities(entt::registry& registry)
     for (auto [entity, model, transform] : viewModel.each())
     {
         if (auto* phys = registry.try_get<Physics3DComponent>(entity)) {
-            if (!AssistSystem::FrustumTestOBB(cam->frustumPlanes, phys->worldOBB)) continue;
+            const OBB* obb = PhysicsSystem::Get()->GetOBB(entity);
+            if (!obb)continue;
+            if (!AssistSystem::FrustumTestOBB(cam->frustumPlanes, *obb)) continue;
         }
         for (const auto& sub : model.subMeshes)
         {

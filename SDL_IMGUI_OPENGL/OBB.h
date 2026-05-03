@@ -120,3 +120,39 @@ inline void ComputeOBBAABB(const OBB& obb, glm::vec3& outMin, glm::vec3& outMax)
         outMax = glm::max(outMax, corners[i]);
     }
 }
+
+// 射线与 OBB 相交测试（Slab 算法）
+inline bool IntersectRayOBB(
+    const glm::vec3& rayOrigin,
+    const glm::vec3& rayDir,   // 必须归一化
+    const OBB& obb,
+    float& outT)
+{
+    float tMin = -FLT_MAX;
+    float tMax = FLT_MAX;
+    glm::vec3 delta = obb.center - rayOrigin;
+
+    for (int i = 0; i < 3; i++)
+    {
+        glm::vec3 axis = obb.orientation[i];
+        float e = glm::dot(delta, axis);
+        float f = glm::dot(rayDir, axis);
+
+        if (std::abs(f) < 1e-6f) {
+            // 射线平行于该 slab
+            if (e - obb.halfExtents[i] > 0.0f || e + obb.halfExtents[i] < 0.0f)
+                return false;
+        }
+        else {
+            float t1 = (e - obb.halfExtents[i]) / f;
+            float t2 = (e + obb.halfExtents[i]) / f;
+            if (t1 > t2) std::swap(t1, t2);
+            tMin = std::max(tMin, t1);
+            tMax = std::min(tMax, t2);
+            if (tMin > tMax) return false;
+        }
+    }
+
+    outT = (tMin >= 0.0f) ? tMin : tMax;
+    return outT >= 0.0f;
+}

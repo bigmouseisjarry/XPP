@@ -140,4 +140,7 @@ struct Camera3DComponent {
         isDirty = true; // 位置变了，projView 需要重算
         // 实际写 Transform3DComponent 由 CameraSystem 统一处理
     }
+
+    // 调试用函数
+    glm::vec3 GetForward() const { return front; }
 };

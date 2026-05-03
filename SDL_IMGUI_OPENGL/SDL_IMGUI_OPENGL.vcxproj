@@ -135,7 +135,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="BattleScene.h" />
+    <ClInclude Include="ComParticle.h" />
+    <ClInclude Include="ParticleSystem.h" />
+    <ClInclude Include="Scene2D.h" />
     <ClInclude Include="ComCamera.h" />
     <ClInclude Include="ComGameplay.h" />
     <ClInclude Include="ComLight.h" />
@@ -178,7 +180,7 @@
     <ClInclude Include="ShadowPass.h" />
     <ClInclude Include="SkyboxPass.h" />
     <ClInclude Include="stb_image.h" />
-    <ClInclude Include="StoryScene.h" />
+    <ClInclude Include="Scene3D.h" />
     <ClInclude Include="Systems.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="TextureSemantic.h" />
@@ -201,7 +203,9 @@
     <ClCompile Include="..\扩展库\imgui\imgui_impl_sdl3.cpp" />
     <ClCompile Include="..\扩展库\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\扩展库\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="BattleScene.cpp" />
+    <ClCompile Include="ComParticle.cpp" />
+    <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="Scene2D.cpp" />
     <ClCompile Include="ComLight.cpp" />
     <ClCompile Include="DrawUtils.cpp" />
     <ClCompile Include="EntityFactory.cpp" />
@@ -220,6 +224,7 @@
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderPipeline.cpp" />
     <ClCompile Include="ResourceManager.cpp" />
+    <ClCompile Include="Scene.cpp" />
     <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="Settings.cpp" />
     <ClCompile Include="SettingsUI.cpp" />
@@ -227,7 +232,7 @@
     <ClCompile Include="ShadowPass.cpp" />
     <ClCompile Include="SkyboxPass.cpp" />
     <ClCompile Include="stb_image.cpp" />
-    <ClCompile Include="StoryScene.cpp" />
+    <ClCompile Include="Scene3D.cpp" />
     <ClCompile Include="Systems.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="tiny_gltf.cpp" />
@@ -250,6 +255,7 @@
     <None Include="ShaderComposite.glsl" />
     <None Include="ShaderFXAA.glsl" />
     <None Include="ShaderLine.glsl" />
+    <None Include="ShaderParticle.glsl" />
     <None Include="ShaderPostProcess.glsl" />
     <None Include="ShaderShadow.glsl" />
     <None Include="ShaderSkybox.glsl" />

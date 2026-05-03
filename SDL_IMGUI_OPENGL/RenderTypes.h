@@ -53,6 +53,15 @@ struct CameraUnit
     glm::vec3 viewPos;
 };
 
+struct InstancedRenderUnit
+{
+    MeshID mesh;
+    const Material* material;
+    RenderLayer renderLayer;
+    unsigned int instanceCount;
+    bool additiveBlend;
+};
+
 struct alignas(16) PerFrameData
 {
     glm::mat4 u_ProjView;
@@ -120,3 +129,4 @@ struct PipelineState {
     bool       colorMask[4] = { true, true, true, true };
     ViewportState viewport;   
 };
+

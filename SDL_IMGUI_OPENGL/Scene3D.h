@@ -2,13 +2,13 @@
 #include "Scene.h"
 
 
-class StoryScene : public Scene
+class Scene3D : public Scene
 {
 private:
    
 
 public:
-    StoryScene(SceneName sceneName);
+    Scene3D(SceneID sceneID);
 
     void Enter() override;
     void OnEvent(SDL_Event& event) override;
@@ -16,4 +16,6 @@ public:
     void OnImGuiRender() override;
     void OnRender() override;
     void Quit() override;
+
+    void BuildPipeline(RenderPipeline& pipeline) override;
 };

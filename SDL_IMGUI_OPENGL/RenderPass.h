@@ -13,6 +13,7 @@ struct RenderContext
     const std::vector<CameraUnit>& cameras2D;
     const std::vector<CameraUnit>& cameras3D;
     const std::vector<Light3DComponent*>& lights;
+    std::vector<InstancedRenderUnit>& instancedUnits;
     UniformBuffer& lightUBO;
     UniformBuffer& perFrameUBO;
     UniformBuffer& perObjectUBO;

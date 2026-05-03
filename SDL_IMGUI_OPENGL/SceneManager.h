@@ -4,12 +4,11 @@
 #include <string>
 #include "GameSettings.h"
 #include "Scene.h"
-#include "BattleScene.h"
 
 class SceneManager
 {
 private:
-	std::unordered_map<SceneName, std::unique_ptr<Scene>> m_Scenes;
+	std::unordered_map<SceneID, std::unique_ptr<Scene>> m_Scenes;
 	Scene* m_CurrentScene = nullptr;
 public:
 
@@ -17,8 +16,8 @@ public:
 	SceneManager& operator=(const SceneManager&) = delete;
 	static SceneManager* Get();
 
-	void RegisterScene(SceneName sceneName, std::unique_ptr<Scene> Scene);
-	void SceneChange(SceneName targetScene);
+	void RegisterScene(SceneID sceneID, std::unique_ptr<Scene> Scene);
+	void SceneChange(SceneID targetScene);
 	void Init();
 
 	void BeginFrame();

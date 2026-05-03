@@ -172,4 +172,123 @@ namespace DrawUtils
         if (mesh) mesh->GetVAO()->UnBind();
         if (curShader) curShader->UnBind();
     }
+
+
+    void DrawInstancedUnits(std::vector<InstancedRenderUnit>& units, const glm::mat4& projView, const glm::vec3& viewPos, UniformBuffer& perFrameUBO)
+    {
+
+        if (units.empty()) return;
+        // 更新 PerFrame UBO
+        PerFrameData frameData;
+        frameData.u_ProjView = projView;
+        frameData.u_ViewPos = viewPos;
+        perFrameUBO.SetData(&frameData, sizeof(PerFrameData));
+
+        const Shader* curShader = nullptr;
+        const Mesh* curMesh = nullptr;
+        PipelineState savedState = PipelineUtils::GetCurrentState();
+
+        for (auto& unit : units)
+        {
+            const auto& shader = ResourceManager::Get()->GetShader(unit.material->m_Shader);
+            const auto& mesh = ResourceManager::Get()->GetMesh(unit.mesh);
+            if (!shader || !mesh) continue;
+
+            // 切换 shader
+            if (curShader != shader)
+            {
+                if (curShader) curShader->UnBind();
+                curShader = shader;
+                curShader->Bind();
+            }
+
+            // 切换 VAO
+            if (curMesh != mesh)
+            {
+                if (curMesh) curMesh->GetVAO()->UnBind();
+                curMesh = mesh;
+                curMesh->GetVAO()->Bind();
+            }
+
+            // 纹理绑定
+            for (const auto& info : curShader->GetUniforms())
+            {
+                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY)
+                {
+                    TextureSemantic semantic = TextureSlot::GetSemantic(info.name);
+                    unsigned int slot = TextureSlot::GetSlot(semantic);
+
+                    TextureID texID = unit.material->GetTexture(semantic);
+                    if (texID.value == INVALID_ID)
+                        texID = ResourceManager::Get()->GetTextureID(TextureSlot::GetSamplerName(semantic));
+
+                    const Texture* tex = ResourceManager::Get()->GetTexture(texID);
+                    if (tex) tex->Bind(slot);
+                    curShader->Set1i(info.name, slot);
+                }
+            }
+
+            // 设置 u_Dimension
+            // 通过 material 属性判断是 2D 还是 3D
+            const UniformValue* dimVal = unit.material->Get("u_Dimension");
+            if (dimVal)
+                curShader->Set1i("u_Dimension", std::get<int>(*dimVal));
+
+            // 加法混合切换
+            PipelineState ps = savedState;
+            ps.blend.enabled = true;
+            if (unit.additiveBlend)
+            {
+                ps.blend.srcFactor = GL_SRC_ALPHA;
+                ps.blend.dstFactor = GL_ONE;
+            }
+            else
+            {
+                ps.blend.srcFactor = GL_SRC_ALPHA;
+                ps.blend.dstFactor = GL_ONE_MINUS_SRC_ALPHA;
+            }
+            ps.depth.writeMask = false;  // 粒子不写深度
+            ps.cull.enabled = false;     // 双面
+            PipelineUtils::ApplyPipelineState(ps);
+
+            // 反射设置 Material 自定义属性（排除 sampler 和 u_Dimension）
+            for (const auto& info : curShader->GetUniforms())
+            {
+                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY) continue;
+                if (info.name == "u_Dimension") continue;
+
+                const UniformValue* val = unit.material->Get(info.name);
+                if (!val) continue;
+                SetUniformByType(curShader, info, *val);
+            }
+
+            GLuint query;
+            glGenQueries(1, &query);
+            glBeginQuery(GL_SAMPLES_PASSED, query);
+
+            glDrawElementsInstanced(mesh->GetDrawMode(),
+                mesh->GetIndexCount(), GL_UNSIGNED_INT, nullptr,
+                unit.instanceCount);
+            glDrawElementsInstanced(mesh->GetDrawMode(),
+                mesh->GetIndexCount(), GL_UNSIGNED_INT, nullptr,
+                unit.instanceCount);
+
+            glEndQuery(GL_SAMPLES_PASSED);
+
+            GLuint64 samplesPassed = 0;
+            glGetQueryObjectui64v(query, GL_QUERY_RESULT, &samplesPassed);
+            static bool printedSamples = false;
+            if (!printedSamples) {
+                std::cout << "Instanced samples passed: " << samplesPassed << std::endl;
+                printedSamples = true;
+            }
+            glDeleteQueries(1, &query);
+
+        }
+
+        // 恢复状态
+        PipelineUtils::ApplyPipelineState(savedState);
+        if (curMesh) curMesh->GetVAO()->UnBind();
+        if (curShader) curShader->UnBind();
+    }
 }
