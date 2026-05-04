@@ -99,6 +99,16 @@ uniform sampler2D               u_NormalMap;
 uniform sampler2D               u_MetallicRoughnessMap;
 uniform sampler2D               u_EmissiveMap;
 uniform sampler2D               u_OcclusionMap;
+uniform samplerCube             u_IrradianceMap;
+uniform samplerCube             u_PrefilterMap;
+uniform sampler2D               u_BRDFLUT;
+
+uniform float u_MaxReflectionLOD = 4.0f;
+
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}
 
 float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir, int layer)
 {
@@ -193,7 +203,21 @@ void main()
     }
 
     // 环境光 + AO
-    vec3 ambient = 0.001 * albedo * ao;
+    vec3 F_ibl = FresnelSchlickRoughness(NdotV, F0, roughness);
+    vec3 kD = (1.0 - F_ibl) * (1.0 - metallic);
+
+    // 漫反射 IBL
+    vec3 irradiance = texture(u_IrradianceMap, N).rgb;
+    vec3 diffuse = irradiance * albedo * kD;
+
+    // 镜面 IBL
+    vec3 R = reflect(-V, N);
+    // u_MaxReflectionLOD = log2(128) = 7.0，对应 5 个 mip level (0-4)
+    vec3 prefilteredColor = textureLod(u_PrefilterMap, R, roughness * u_MaxReflectionLOD).rgb;
+    vec2 envBRDF = texture(u_BRDFLUT, vec2(NdotV, roughness)).rg;
+    vec3 specular = prefilteredColor * (F_ibl * envBRDF.x + envBRDF.y);
+
+    vec3 ambient = (diffuse + specular) * ao;
 
     vec3 result = ambient + Lo + emissive;
 

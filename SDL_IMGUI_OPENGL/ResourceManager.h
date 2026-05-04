@@ -7,29 +7,8 @@
 #include "Texture.h"
 #include "mesh.h"
 #include "Framebuffer.h"
+#include "ResourceIDs.h"
 
-// 无效 ID
-constexpr uint32_t INVALID_ID = UINT32_MAX;
-
-  // ========== 强类型 ID ==========
-struct TextureID { uint32_t value = INVALID_ID; };
-struct MeshID { uint32_t value = INVALID_ID; };
-struct ShaderID { uint32_t value = INVALID_ID; };
-struct FramebufferID { uint32_t value = INVALID_ID; };
-
-// 编译期检查，防止类型混淆
-static_assert(!std::is_same_v<TextureID, MeshID>, "TextureID and MeshID should be different types");
-
-// ========== 为强类型 ID 提供 hash ==========
-struct TextureIDHash { size_t operator()(TextureID id) const { return std::hash<uint32_t>{}(id.value); } };
-struct MeshIDHash { size_t operator()(MeshID id) const { return std::hash<uint32_t>{}(id.value); } };
-struct ShaderIDHash { size_t operator()(ShaderID id) const { return std::hash<uint32_t>{}(id.value); } };
-struct FramebufferIDHash { size_t operator()(FramebufferID id) const { return std::hash<uint32_t>{}(id.value); } };
-
-inline bool operator<(TextureID lhs, TextureID rhs) { return lhs.value < rhs.value; };
-inline bool operator<(MeshID lhs, MeshID rhs) { return lhs.value < rhs.value; };
-inline bool operator<(ShaderID lhs, ShaderID rhs) { return lhs.value < rhs.value; };
-inline bool operator<(FramebufferID lhs, FramebufferID rhs) { return lhs.value < rhs.value; };
 
 class ResourceManager
 {
@@ -59,18 +38,20 @@ public:
     // ========== 注册接口（返回 ID）==========
     ShaderID  LoadShader(const std::string& filePath);
     TextureID LoadTexture(const std::string& path, int cols = 1, int rows = 1);
-    TextureID LoadDefaultTexture(const std::string& name, float r, float g, float b, float a);      // TUDO: 这几个加载纹理可以合并一下
+    TextureID LoadDefaultTexture(const std::string& name, float r, float g, float b, float a);     
     TextureID LoadHDRTexture(const std::string& name);
     TextureID CreateNoiseTexture(const std::string& name, int width, int height);
     TextureID CreateTextureFromPixels(const std::string& name, unsigned char* pixels, int width, int height, int channels, int minFilter, int magFilter,
         int wrapS, int wrapT, bool sRGB);
-
+    TextureID CreateCubemapTexture(const std::string& name, int size, GLenum internalFormat, int mipLevels = 1);
+    TextureID CreateTexture2D(const std::string& name, int width, int height, GLenum internalFormat);
+    TextureID CreateDepthTexture2D(const std::string& name, int width, int height, bool clampToBorder = false);
+    TextureID CreateDepthTextureArray(const std::string& name, int width, int height, int layers, bool clampToBorder = false, bool shadowCompare = false);
 
     template<typename VertexT>
     MeshID CreateMesh(const std::string& name, const std::vector<VertexT>& vertices, const std::vector<unsigned int>& indices);
     MeshID CreateInstancedMesh(const std::string& name, const Mesh& sharedMesh, std::unique_ptr<VertexBuffer> instanceVBO, const VertexBufferLayout& instanceLayout,
         unsigned int maxInstances);
-    FramebufferID CreateFramebuffer(const std::string& name, int width, int height);
     FramebufferID CreateFramebuffer(const std::string& name, const FramebufferSpec& spec);
     MeshID CreateMeshFromBlob(const std::string& name, const std::vector<uint8_t>& vertexBlob, size_t vertexSize, const std::vector<unsigned int>& indices,
         VertexType vertexType);
@@ -84,6 +65,7 @@ public:
     // ========== ID 查找（运行时用，O(1)）==========
     const Shader* GetShader(ShaderID id) const;
     const Texture* GetTexture(TextureID id) const;
+    Texture* GetTextureMut(TextureID id);
     const Framebuffer* GetFramebuffer(FramebufferID id) const;
     Framebuffer* GetFramebufferMut(FramebufferID id);
     const Mesh* GetMesh(MeshID id) const;

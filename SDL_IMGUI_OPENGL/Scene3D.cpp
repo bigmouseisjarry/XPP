@@ -123,17 +123,6 @@ void Scene3D::OnUpdate(float deltaTime)
 
 	DestroySystem::Update(m_Registry);
 
-	//// 从摄像机位置向前发射射线
-	//for (auto [entity, cam, transform] : camView.each()) {
-	//	glm::vec3 origin = transform.position;
-	//	glm::vec3 dir = cam.GetForward();  // 需要摄像机有前方向量
-	//	RaycastHit hit = PhysicsSystem::Get()->Raycast(m_Registry, origin, dir, 100.0f);
-	//	if (hit.entity != entt::null) {
-	//		auto& tag = m_Registry.get<TagComponent>(hit.entity);
-	//		std::cout << "命中: " << tag.name << " 距离: " << hit.distance << std::endl;
-	//	}
-	//}
-
 }
 
 void Scene3D::OnImGuiRender()
@@ -173,11 +162,19 @@ void Scene3D::OnImGuiRender()
 	{
 		if (!emitter.isPlaying) continue;
 		ImGui::Text("粒子数 %d", (int)emitter.m_Particles.size());
-		for (auto& p : emitter.m_Particles)
-		{
-			//std::cout << " 位置： " << p.position.x << " " << p.position.y << " " << p.position.z << std::endl;
-			//std::cout << " 大小：" << p.size << std::endl;
+	}
+	auto camView = m_Registry.view<Camera3DComponent, Transform3DComponent>();
+	for (auto [entity, cam, tra] : camView.each())
+	{
+		if (!cam.enabled)continue;
+		glm::vec3 origin = tra.position;
+		glm::vec3 dir = cam.GetForward();  // 需要摄像机有前方向量
+		RaycastHit hit = PhysicsSystem::Get()->Raycast(m_Registry, origin, dir, 100.0f);
+		if (hit.entity != entt::null) {
+			auto& tag = m_Registry.get<TagComponent>(hit.entity);
+			ImGui::Text("摄像机 正向向量的射线检测：命中：%s   距离：%f", tag.name.c_str(), hit.distance);
 		}
+
 	}
 	ImGui::End();
 	ImGui::End();

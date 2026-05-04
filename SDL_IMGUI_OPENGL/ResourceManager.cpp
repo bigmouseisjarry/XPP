@@ -28,6 +28,10 @@ void ResourceManager::Init()
     LoadShader("ShaderSSAOBlur.glsl");
 	LoadShader("ShaderFXAA.glsl");
     LoadShader("ShaderParticle.glsl");
+    LoadShader("ShaderEquirectToCubemap.glsl");
+    LoadShader("ShaderIrradiance.glsl");
+    LoadShader("ShaderPrefilter.glsl");
+    LoadShader("ShaderBRDFLUT.glsl");
 
     // 注册 texture
     LoadTexture("resources/idle/leftidle.png", 10, 1);
@@ -57,6 +61,7 @@ void ResourceManager::Init()
     LoadDefaultTexture("u_BloomBrightMap", 0.0f, 0.0f, 0.0f, 1.0f);
     LoadDefaultTexture("u_SSAOMap", 1.0f, 1.0f, 1.0f, 1.0f);
     LoadDefaultTexture("u_BloomMap", 0.0f, 0.0f, 0.0f, 1.0f);
+
     CreateNoiseTexture("u_NoiseMap", 4, 4);
 
     LoadHDRTexture("resources/skybox/grasslands_sunset_4k.hdr");
@@ -301,6 +306,9 @@ TextureID ResourceManager::LoadTexture(const std::string& path, int cols, int ro
 
 TextureID ResourceManager::LoadDefaultTexture(const std::string& name, float r, float g, float b, float a)
 {
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
     TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
     m_Textures.emplace_back(std::unique_ptr<Texture>(new Texture(r, g, b, a)));
     m_TextureNameToID[name] = id;
@@ -309,6 +317,9 @@ TextureID ResourceManager::LoadDefaultTexture(const std::string& name, float r, 
 
 TextureID ResourceManager::LoadHDRTexture(const std::string& name)
 {
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
     TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
     m_Textures.push_back(std::make_unique<Texture>(name, true));
     m_TextureNameToID[name] = id;
@@ -317,6 +328,9 @@ TextureID ResourceManager::LoadHDRTexture(const std::string& name)
 
 TextureID ResourceManager::CreateNoiseTexture(const std::string& name, int width, int height)
 {
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
     // 生成随机半球采样向量
     std::vector<float> data(width * height * 4);
     for (int i = 0; i < width * height; i++)
@@ -350,6 +364,50 @@ TextureID ResourceManager::CreateTextureFromPixels(const std::string& name, unsi
     return id;
 }
 
+TextureID ResourceManager::CreateCubemapTexture(const std::string& name, int size, GLenum internalFormat, int mipLevels)
+{
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
+    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
+    m_Textures.emplace_back(std::make_unique<Texture>(size, internalFormat, mipLevels));
+    m_TextureNameToID[name] = id;
+    return id;
+}
+
+TextureID ResourceManager::CreateTexture2D(const std::string& name, int width, int height, GLenum internalFormat)
+{
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
+    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
+    m_Textures.emplace_back(std::make_unique<Texture>(width, height, internalFormat));
+    m_TextureNameToID[name] = id;
+    return id;
+}
+
+TextureID ResourceManager::CreateDepthTexture2D(const std::string& name, int width, int height, bool clampToBorder)
+{
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
+    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
+    m_Textures.emplace_back(std::unique_ptr<Texture>(new Texture(width, height, clampToBorder)));
+    m_TextureNameToID[name] = id;
+    return id;
+}
+
+TextureID ResourceManager::CreateDepthTextureArray(const std::string& name, int width, int height, int layers, bool clampToBorder, bool shadowCompare)
+{
+    auto it = m_TextureNameToID.find(name);
+    if (it != m_TextureNameToID.end()) return it->second;
+
+    TextureID id{ static_cast<uint32_t>(m_Textures.size()) };
+    m_Textures.emplace_back(std::unique_ptr<Texture>(new Texture(width, height, layers, clampToBorder, shadowCompare)));
+    m_TextureNameToID[name] = id;
+    return id;
+}
+
 MeshID ResourceManager::CreateInstancedMesh(const std::string& name, const Mesh& sharedMesh, std::unique_ptr<VertexBuffer> instanceVBO, const VertexBufferLayout& instanceLayout, unsigned int maxInstances)
 {
     auto it = m_MeshNameToID.find(name);
@@ -365,16 +423,6 @@ MeshID ResourceManager::CreateInstancedMesh(const std::string& name, const Mesh&
     return id;
 }
 
-FramebufferID ResourceManager::CreateFramebuffer(const std::string& name, int width, int height)
-{
-    FramebufferSpec spec;
-    spec.width = width;
-    spec.height = height;
-    spec.depthAttachment = { AttachmentFormat::Depth24 };
-    spec.depthClampToBorder = true;
-    return CreateFramebuffer(name, spec);
-}
-
 FramebufferID ResourceManager::CreateFramebuffer(const std::string& name, const FramebufferSpec& spec)
 {
     auto it = m_FramebufferNameToID.find(name);
@@ -384,8 +432,8 @@ FramebufferID ResourceManager::CreateFramebuffer(const std::string& name, const 
     m_Framebuffers.emplace_back(std::make_unique<Framebuffer>(spec));
     m_FramebufferNameToID[name] = id;
     return id;
-
 }
+
 MeshID ResourceManager::CreateMeshFromBlob(const std::string& name, const std::vector<uint8_t>& vertexBlob, size_t vertexSize, const std::vector<unsigned int>& indices, VertexType vertexType)
 {
     auto it = m_MeshNameToID.find(name);
@@ -428,6 +476,12 @@ const Shader* ResourceManager::GetShader(ShaderID id) const
 }
 
 const Texture* ResourceManager::GetTexture(TextureID id) const
+{
+    if (id.value >= m_Textures.size()) return nullptr;
+    return m_Textures[id.value].get();
+}
+
+Texture* ResourceManager::GetTextureMut(TextureID id)
 {
     if (id.value >= m_Textures.size()) return nullptr;
     return m_Textures[id.value].get();

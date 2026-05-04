@@ -111,18 +111,22 @@ namespace DrawUtils
                 mesh->GetVAO()->Bind();
             }
 
-            if (!curShader || !mesh) continue;
+            if (!curShader || !mesh)
+            {
+                std::cout << "有unit的shader或者mesh为空" << std::endl;
+                continue;
+            }
 
             for (const auto& info : curShader->GetUniforms())
             {
-                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY)
+                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY || info.type == GL_SAMPLER_CUBE)
                 {
                     TextureSemantic semantic = TextureSlot::GetSemantic(info.name);
                     unsigned int slot = TextureSlot::GetSlot(semantic);
 
                     if (semantic == TextureSemantic::ShadowMapArray)
                     {
-                        curShader->Set1i(info.name, slot); 
+                        curShader->Set1i(info.name, slot);
                         continue;
                     }
 
@@ -133,7 +137,7 @@ namespace DrawUtils
                     }
 
                     const Texture* tex = ResourceManager::Get()->GetTexture(texID);
-					// std::cout << TextureSlot::GetSamplerName(semantic) << ": " << tex->GetFilePath() << std::endl;
+                    // std::cout << TextureSlot::GetSamplerName(semantic) << ": " << tex->GetFilePath() << std::endl;
                     if (tex) tex->Bind(slot);
                     curShader->Set1i(info.name, slot);
                 }
@@ -157,7 +161,7 @@ namespace DrawUtils
             // 反射循环：Material 自定义属性
             for (const auto& info : curShader->GetUniforms())
             {
-                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY) continue;
+                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY || info.type == GL_SAMPLER_CUBE) continue;
 
                 const UniformValue* val = x.material->Get(info.name);
                 if (!val) continue;
@@ -192,8 +196,11 @@ namespace DrawUtils
         {
             const auto& shader = ResourceManager::Get()->GetShader(unit.material->m_Shader);
             const auto& mesh = ResourceManager::Get()->GetMesh(unit.mesh);
-            if (!shader || !mesh) continue;
-
+            if (!shader || !mesh)
+            {
+                std::cout << "有unit的shader或者mesh为空" << std::endl;
+                continue;
+            }
             // 切换 shader
             if (curShader != shader)
             {
@@ -213,7 +220,7 @@ namespace DrawUtils
             // 纹理绑定
             for (const auto& info : curShader->GetUniforms())
             {
-                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY)
+                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY || info.type == GL_SAMPLER_CUBE)
                 {
                     TextureSemantic semantic = TextureSlot::GetSemantic(info.name);
                     unsigned int slot = TextureSlot::GetSlot(semantic);
@@ -254,7 +261,7 @@ namespace DrawUtils
             // 反射设置 Material 自定义属性（排除 sampler 和 u_Dimension）
             for (const auto& info : curShader->GetUniforms())
             {
-                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY) continue;
+                if (info.type == GL_SAMPLER_2D || info.type == GL_SAMPLER_2D_ARRAY || info.type == GL_SAMPLER_CUBE) continue;
                 if (info.name == "u_Dimension") continue;
 
                 const UniformValue* val = unit.material->Get(info.name);
@@ -262,27 +269,7 @@ namespace DrawUtils
                 SetUniformByType(curShader, info, *val);
             }
 
-            GLuint query;
-            glGenQueries(1, &query);
-            glBeginQuery(GL_SAMPLES_PASSED, query);
-
-            glDrawElementsInstanced(mesh->GetDrawMode(),
-                mesh->GetIndexCount(), GL_UNSIGNED_INT, nullptr,
-                unit.instanceCount);
-            glDrawElementsInstanced(mesh->GetDrawMode(),
-                mesh->GetIndexCount(), GL_UNSIGNED_INT, nullptr,
-                unit.instanceCount);
-
-            glEndQuery(GL_SAMPLES_PASSED);
-
-            GLuint64 samplesPassed = 0;
-            glGetQueryObjectui64v(query, GL_QUERY_RESULT, &samplesPassed);
-            static bool printedSamples = false;
-            if (!printedSamples) {
-                std::cout << "Instanced samples passed: " << samplesPassed << std::endl;
-                printedSamples = true;
-            }
-            glDeleteQueries(1, &query);
+            glDrawElementsInstanced(mesh->GetDrawMode(), mesh->GetIndexCount(), GL_UNSIGNED_INT, nullptr, unit.instanceCount);
 
         }
 

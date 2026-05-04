@@ -135,8 +135,13 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="BRDFLUTPass.h" />
     <ClInclude Include="ComParticle.h" />
+    <ClInclude Include="EquirectToCubemapPass.h" />
+    <ClInclude Include="IrradiancePass.h" />
     <ClInclude Include="ParticleSystem.h" />
+    <ClInclude Include="PrefilterPass.h" />
+    <ClInclude Include="ResourceIDs.h" />
     <ClInclude Include="Scene2D.h" />
     <ClInclude Include="ComCamera.h" />
     <ClInclude Include="ComGameplay.h" />
@@ -203,8 +208,12 @@
     <ClCompile Include="..\扩展库\imgui\imgui_impl_sdl3.cpp" />
     <ClCompile Include="..\扩展库\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\扩展库\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="BRDFLUTPass.cpp" />
     <ClCompile Include="ComParticle.cpp" />
+    <ClCompile Include="EquirectToCubemapPass.cpp" />
+    <ClCompile Include="IrradiancePass.cpp" />
     <ClCompile Include="ParticleSystem.cpp" />
+    <ClCompile Include="PrefilterPass.cpp" />
     <ClCompile Include="Scene2D.cpp" />
     <ClCompile Include="ComLight.cpp" />
     <ClCompile Include="DrawUtils.cpp" />
@@ -252,11 +261,15 @@
     <None Include="ShaderBloomBlur.glsl" />
     <None Include="ShaderBloomBright.glsl" />
     <None Include="ShaderBloomUp.glsl" />
+    <None Include="ShaderBRDFLUT.glsl" />
     <None Include="ShaderComposite.glsl" />
+    <None Include="ShaderEquirectToCubemap.glsl" />
     <None Include="ShaderFXAA.glsl" />
+    <None Include="ShaderIrradiance.glsl" />
     <None Include="ShaderLine.glsl" />
     <None Include="ShaderParticle.glsl" />
     <None Include="ShaderPostProcess.glsl" />
+    <None Include="ShaderPrefilter.glsl" />
     <None Include="ShaderShadow.glsl" />
     <None Include="ShaderSkybox.glsl" />
     <None Include="ShaderSSAO.glsl" />

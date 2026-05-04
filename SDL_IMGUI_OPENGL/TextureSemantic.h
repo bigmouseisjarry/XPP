@@ -18,6 +18,10 @@ enum class TextureSemantic : unsigned int
     SSAO = 11,                     // SSAO 遮蔽值，Blur 和 Composite 读取
     Bloom = 12,                    // 最终 Bloom 全分辨率结果，Composite 读取
     BloomUp = 13,                  // 上采样中间结果
+    EnvironmentCubemap = 15,       // HDR 环境cubemap（equirect转换后的）
+    IrradianceMap = 16,            // 漫反射辐照度图
+    PrefilterMap = 17,             // 镜面预过滤环境图
+    BRDFLUT = 18,                  // BRDF 积分查找表
 };
 
 struct TextureSemanticHash
@@ -54,6 +58,10 @@ namespace TextureSlot
               { TextureSemantic::SSAO,              "u_SSAOMap" },
               { TextureSemantic::Bloom,             "u_BloomMap" },
               { TextureSemantic::BloomUp,           "u_BloomUpMap" },
+              { TextureSemantic::EnvironmentCubemap,"u_EnvironmentCubemap" },
+              { TextureSemantic::IrradianceMap,     "u_IrradianceMap" },
+              { TextureSemantic::PrefilterMap,      "u_PrefilterMap" },
+              { TextureSemantic::BRDFLUT,           "u_BRDFLUT" },
         };
         static const std::string empty;
         auto it = s_SamplerNames.find(semantic);
@@ -78,6 +86,10 @@ namespace TextureSlot
               { "u_SSAOMap",              TextureSemantic::SSAO },
               { "u_BloomMap",             TextureSemantic::Bloom },
               { "u_BloomUpMap",           TextureSemantic::BloomUp },
+              { "u_EnvironmentCubemap",   TextureSemantic::EnvironmentCubemap },
+              { "u_IrradianceMap",        TextureSemantic::IrradianceMap },
+              { "u_PrefilterMap",         TextureSemantic::PrefilterMap },
+              { "u_BRDFLUT",              TextureSemantic::BRDFLUT },
         };
         auto it = s_NameToSemantic.find(samplerName);
         return it != s_NameToSemantic.end() ? it->second : TextureSemantic::Albedo;

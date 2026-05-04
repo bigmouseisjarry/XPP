@@ -18,11 +18,10 @@ PipelineState OpaquePass3D::GetPipelineState() const
 
 void OpaquePass3D::Setup(RenderContext& ctx)
 {
-    // 绑定阴影数组纹理
-    FramebufferID shadowFBOID = Renderer::Get()->GetShadowArrayFBOID();
-    const Framebuffer* shadowFBO = ResourceManager::Get()->GetFramebuffer(shadowFBOID);
-    if (shadowFBO)
-        shadowFBO->BindDepthTexture(TextureSlot::GetSlot(TextureSemantic::ShadowMapArray));
+    if (m_ShadowTexGLID) {
+        glActiveTexture(GL_TEXTURE0 + TextureSlot::GetSlot(TextureSemantic::ShadowMapArray));
+        glBindTexture(GL_TEXTURE_2D_ARRAY, m_ShadowTexGLID);
+    }
 }
 
 void OpaquePass3D::Execute(RenderContext& ctx)
@@ -41,8 +40,14 @@ void OpaquePass3D::Execute(RenderContext& ctx)
 
 void OpaquePass3D::Teardown(RenderContext& ctx)
 {
-    FramebufferID shadowFBOID = Renderer::Get()->GetShadowArrayFBOID();
-    const Framebuffer* shadowFBO = ResourceManager::Get()->GetFramebuffer(shadowFBOID);
-    if (shadowFBO)
-        shadowFBO->UnbindDepthTexture(TextureSlot::GetSlot(TextureSemantic::ShadowMapArray));
+    if (m_ShadowTexGLID) {
+        glActiveTexture(GL_TEXTURE0 + TextureSlot::GetSlot(TextureSemantic::ShadowMapArray));
+        glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    }
+}
+
+void OpaquePass3D::SetInputTexture(TextureSemantic semantic, unsigned int textureID)
+{
+    if (semantic == TextureSemantic::ShadowMapArray)
+        m_ShadowTexGLID = textureID;
 }

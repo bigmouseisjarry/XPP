@@ -288,6 +288,21 @@
     <ClInclude Include="ParticleSystem.h">
       <Filter>场景管理\粒子系统</Filter>
     </ClInclude>
+    <ClInclude Include="EquirectToCubemapPass.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="IrradiancePass.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="PrefilterPass.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="BRDFLUTPass.h">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClInclude>
+    <ClInclude Include="ResourceIDs.h">
+      <Filter>资源管理器</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EntityFactory.cpp">
@@ -431,6 +446,18 @@
     <ClCompile Include="ComParticle.cpp">
       <Filter>场景管理\粒子系统\粒子组件</Filter>
     </ClCompile>
+    <ClCompile Include="EquirectToCubemapPass.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="IrradiancePass.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="PrefilterPass.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
+    <ClCompile Include="BRDFLUTPass.cpp">
+      <Filter>渲染引擎\pass\具体的pass</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader.glsl">
@@ -479,6 +506,18 @@
       <Filter>资源文件</Filter>
     </None>
     <None Include="ShaderParticle.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderEquirectToCubemap.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderIrradiance.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderPrefilter.glsl">
+      <Filter>资源文件</Filter>
+    </None>
+    <None Include="ShaderBRDFLUT.glsl">
       <Filter>资源文件</Filter>
     </None>
   </ItemGroup>
