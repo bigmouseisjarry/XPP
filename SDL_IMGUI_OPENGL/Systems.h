@@ -8,6 +8,7 @@ namespace CameraSystem {
 namespace RenderSubmitSystem {
     void SubmitCameras(entt::registry& registry);
     void SubmitEntities(entt::registry& registry);
+    void SubmitLights(entt::registry& registry);
 }
 
 namespace PlayerSystem {
@@ -23,7 +24,7 @@ namespace DestroySystem {
 }
 
 namespace LightSystem {
-    void Update(entt::registry& registry);
+    
 }
 
 namespace AnimationSystem {

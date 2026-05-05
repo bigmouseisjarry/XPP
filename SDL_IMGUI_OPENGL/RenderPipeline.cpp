@@ -55,7 +55,7 @@ void RenderPipeline::Execute(RenderContext& ctx)
                 TextureID tid = (outputs.colorIndex == -1)
                     ? outputFBO->GetDepthTextureID()
                     : outputFBO->GetColorTextureID(outputs.colorIndex);
-                m_TexturePool[PoolKey{ outputs.semantic, outputs.level }] = TextureSource{ tid };
+                m_TexturePool[PoolKey{ outputs.semantic, outputs.level }] = tid;
 
             }
         }
@@ -74,7 +74,7 @@ const std::vector<std::unique_ptr<RenderPass>>& RenderPipeline::GetPasses() cons
 
 void RenderPipeline::RegisterTextureID(TextureSemantic semantic, TextureID texID, int level)
 {
-    m_TexturePool[PoolKey{ semantic, level }] = TextureSource{ texID };
+    m_TexturePool[PoolKey{ semantic, level }] = texID;
 }
 
 unsigned int RenderPipeline::ResolveTextureID(TextureSemantic semantic, int level)
@@ -83,8 +83,8 @@ unsigned int RenderPipeline::ResolveTextureID(TextureSemantic semantic, int leve
     if (it == m_TexturePool.end()) return 0;
 
     const auto& src = it->second;
-    if (src.textureID.value != INVALID_ID) {
-        const Texture* tex = ResourceManager::Get()->GetTexture(src.textureID);
+    if (src.value != INVALID_ID) {
+        const Texture* tex = ResourceManager::Get()->GetTexture(src);
         return tex ? tex->GetRendererID() : 0;
     }
     return 0;

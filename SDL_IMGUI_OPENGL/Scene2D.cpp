@@ -88,7 +88,7 @@ void Scene2D::OnRender()
 
 	ParticleSystem::Get()->SubmitRender(m_Registry);
 
-	Renderer::Get()->Flush({});
+	Renderer::Get()->Flush();
 }
 
 void Scene2D::Quit()

@@ -2,7 +2,6 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "ComLight.h"
 #include "TextureSemantic.h"
 #include "RenderTypes.h"
 #include "ResourceManager.h"
@@ -12,7 +11,7 @@ struct RenderContext
     std::unordered_map<RenderLayer, std::vector<RenderUnit>>& renderUnits;
     const std::vector<CameraUnit>& cameras2D;
     const std::vector<CameraUnit>& cameras3D;
-    const std::vector<Light3DComponent*>& lights;
+    std::vector<LightUnit>& lights;
     std::vector<InstancedRenderUnit>& instancedUnits;
     UniformBuffer& lightUBO;
     UniformBuffer& perFrameUBO;

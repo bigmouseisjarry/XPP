@@ -4,7 +4,7 @@
 
 ## 1. 项目定位
 
-**概括**：这是一个基于 OpenGL 4.5 的实时 PBR 游戏渲染引擎，使用 ECS 架构管理场景，实现了从模型加载到后处理的完整渲染管线，意在实现以节点的方式去构建完整游戏
+**概括**：这是一个基于 OpenGL 4.5 的实时 PBR 游戏渲染引擎，使用 ECS 架构管理场景，实现了从模型加载到后处理的完整渲染管线，包含 IBL 环境光照、粒子系统、物理碰撞等完整游戏功能，意在以节点的方式去构建完整游戏。
 
 **技术选型理由**：
 
@@ -28,10 +28,12 @@ main()
  │   ├─ GLEW 扩展加载
  │   ├─ ResourceManager 初始化（注册着色器、纹理、网格、帧缓冲）
  │   ├─ ImGui 初始化（SDL3 + OpenGL3 后端）
- │   ├─ Renderer 初始化（构建 RenderPipeline，注册所有 Pass）
- │   ├─ Scene 创建（BattleScene 或 StoryScene）
- │   │   ├─ EntityFactory 批量创建实体（相机、灯光、模型、玩家）
- │   │   └─ ECS 系统注册（相机、动画、物理、层级、灯光、渲染提交）
+ │   ├─ Renderer 初始化（创建 UBO、默认 FBO、噪声纹理）
+ │   ├─ SceneManager 初始化，注册 Scene2D / Scene3D
+ │   ├─ Scene 进入（Enter）
+ │   │   ├─ EntityFactory 批量创建实体（相机、灯光、模型、玩家、粒子）
+ │   │   ├─ ECS 系统注册（相机、动画、物理、层级、灯光、粒子、渲染提交）
+ │   │   └─ BuildPipeline()：场景自主构建渲染管线（注册 Pass、创建 FBO）
  │   └─ InputManager 初始化
  │
  ├─ 2. 主循环 (每帧)
@@ -40,9 +42,11 @@ main()
  │   ├─ Scene::Update(dt)  —— ECS 系统执行
  │   │   ├─ CameraSystem      —— 轨道相机更新、View/Projection 矩阵
  │   │   ├─ AnimationSystem   —— 精灵表帧更新
- │   │   ├─ PhysicsSystem     —— 碰撞检测（2D AABB / 3D SAT）
+ │   │   ├─ PhysicsSystem     —— 碰撞检测（2D AABB / 3D OBB SAT + 射线检测）
  │   │   ├─ HierarchySystem   —— 父子变换脏标记传播
  │   │   ├─ LightSystem       —— 灯光视锥体拟合、阴影矩阵更新
+ │   │   ├─ ParticleSystem    —— 粒子发射、速度/重力/阻力积分、生命周期管理
+ │   │   ├─ PlayerSystem      —— 玩家状态机（Idle/Walk/Jump/Fall）
  │   │   └─ SubmitSystem      —— 收集可见实体到渲染队列
  │   ├─ Renderer::Render() —— 渲染管线执行
  │   │   └─ RenderPipeline::Execute()
@@ -62,6 +66,7 @@ main()
 - 初始化顺序严格按依赖关系：窗口 → GL上下文 → 资源 → 管线 → 场景
 - 主循环的三个阶段（Input → Update → Render）完全解耦，便于单独测试和调试
 - 清理顺序是初始化的逆序，确保 GL 资源在上下文销毁前释放
+- **管线构建权下放 Scene**：每个 Scene 通过 `BuildPipeline()` 自主决定渲染管线的组成，不同场景可有完全不同的渲染策略
 
 ---
 
@@ -82,19 +87,25 @@ main()
 │   └──────────┘   └──────────┘   └──────────┘            │
 │                                                          │
 │   相机系统 · 动画系统 · 物理系统 · 层级系统 ·             │
-│   灯光系统 · 渲染提交系统 · 玩家系统 · 销毁系统           │
+│   灯光系统 · 粒子系统 · 渲染提交系统 · 玩家系统           │
+│                                                          │
+│   每个 Scene 通过 BuildPipeline() 自主构建渲染管线        │
 ├──────────────────────────────────────────────────────────┤
 │                      Renderer Layer                       │
 │                                                          │
 │   Renderer 协调器：                                       │
-│   ├─ UBO 管理（PerFrame / Lights / ShadowMatrices）      │
-│   ├─ 管线构建（Pass 注册、顺序编排）                      │
-│   └─ 渲染入口（接收 Scene 提交的队列）                    │
+│   ├─ UBO 管理（PerFrame / Lights / SSAOKernel）          │
+│   ├─ 相机/灯光/Instanced 渲染队列管理                     │
+│   └─ 渲染入口（接收 Scene 提交的队列，驱动管线）          │
 │                                                          │
 │   ResourceManager：                                       │
 │   ├─ 强类型 ID 体系（编译期类型安全）                     │
 │   ├─ 名称↔ID 双向查找                                    │
 │   └─ 统一生命周期管理                                     │
+│                                                          │
+│   WorkerPool + GLCommandQueue：                           │
+│   ├─ 2 线程池异步模型加载                                 │
+│   └─ 延迟 GL 操作同步到主线程                             │
 ├──────────────────────────────────────────────────────────┤
 │                     Pipeline Layer                        │
 │                                                          │
@@ -103,8 +114,10 @@ main()
 │   ├─ 纹理池依赖解析（(语义, 级别) → GL 纹理 ID）         │
 │   └─ PSO 状态管理（Blend/Depth/Cull/Viewport）           │
 │                                                          │
-│   20 个 Pass：Shadow → Skybox → Opaque3D → Transparent3D │
-│             → Bloom(1+8+3) → SSAO(1+1) → Composite       │
+│   3D 管线 23 个 Pass：                                    │
+│   Shadow → IBL×4 → Skybox → Opaque3D → Transparent3D     │
+│   → Bloom(Bright + BlurH×4 + BlurV×4 + Up×4)             │
+│   → SSAO + SSAOBlur → Composite                          │
 ├──────────────────────────────────────────────────────────┤
 │                       OpenGL Layer                        │
 │                                                          │
@@ -115,7 +128,7 @@ main()
 ```
 
 **层间通信规则**：
-- Scene Layer → Renderer Layer：通过渲染队列（实体列表 + 相机 + 灯光 UBO 数据）
+- Scene Layer → Renderer Layer：通过渲染队列（实体列表 + 相机 + 灯光 UBO 数据 + Instanced 粒子数据）
 - Renderer Layer → Pipeline Layer：Renderer 构建管线时注册 Pass，运行时传递 FBO 尺寸
 - Pipeline Layer → OpenGL Layer：每个 Pass 通过 PipelineUtils 管理 GL 状态
 - **下层不依赖上层**：OpenGL 层不知道 Pipeline 的存在，Pipeline 层不知道 Scene 的存在
@@ -135,6 +148,7 @@ main()
    │  · Y-up → Z-up 坐标系转换（glTF 标准是 Y-up，本引擎使用 Z-up）
    │  · Lengyel 算法计算切线（法线映射必需）
    │  · 顶点去重、材质 PBR 参数提取
+   │  · （可选）WorkerPool 异步加载 → GLCommandQueue 同步上传
    ▼
 [GPU 内存] VAO + VBO + IBO + 纹理对象
    │  UploadMesh() → glBufferData / glTexImage2D
@@ -146,35 +160,43 @@ main()
    ▼
 [渲染帧] RenderPipeline::Execute()
    │
-   ├─ Pass 1: ShadowPass
-   │   对每盏灯光渲染 gl_Layer 到 Layered Depth Array
-   │   输出: ShadowDepthArray (8层 2D Array Texture)
+   ├─ IBL Passes (一次性初始化，首帧执行后跳过)
+   │   ├─ EquirectToCubemapPass: HDR等距柱状图 → 环境立方体贴图
+   │   ├─ IrradiancePass: 立方体贴图 → 漫反射辐照度图 (32×32)
+   │   ├─ PrefilterPass: 立方体贴图 → 镜面反射预过滤图 (128×128, 5 mip)
+   │   └─ BRDFLUTPass: 生成 BRDF 积分查找表 (512×512, RG16F)
    │
-   ├─ Pass 2: SkyboxPass
+   ├─ Pass 5: ShadowPass
+   │   对每盏灯光渲染 gl_Layer 到 Layered Depth Array (2048×2048, 8层)
+   │   输出: ShadowDepthArray
+   │
+   ├─ Pass 6: SkyboxPass
    │   渲染 HDR 天空盒到 SceneColor (RGBA16F)
    │   输出: SceneColor, Depth
    │
-   ├─ Pass 3: OpaquePass3D
+   ├─ Pass 7: OpaquePass3D
    │   PBR Shader: 采样 Albedo/Normal/MetallicRoughness/AO/Emissive
    │   → TBN 矩阵(含正交化) → 法线映射
-   │   → GGX 法线分布 → Smith 几何遮蔽 → Schlick 菲涅尔
-   │   → 8盏灯光逐盏累加（含阴影因子 PCF 采样）
+   │   → IBL 漫反射采样(IrradianceMap) + IBL 镜面反射采样(PrefilterMap + BRDFLUT)
+   │   → 8盏灯光逐盏累加 Cook-Torrance（含阴影因子 PCF 采样）
    │   → MRT 输出: SceneColor(RGBA16F) + WorldNormal(RGBA16F)
    │   输出: SceneColor, WorldNormal, Depth
    │
-   ├─ Pass 4: TransparentPass3D
+   ├─ Pass 8: TransparentPass3D
    │   同上但开启 Blend（排序后半透明混合）
    │
-   ├─ Pass 5-13: Bloom (Bright + 4级BlurH/V + 3级Up)
+   ├─ Pass 9-24: Bloom (Bright + 4级BlurH+BlurV + 4级Up)
    │   BloomBright: dot(color.rgb, lumWeights) > threshold → 提取亮区
-   │   BlurH (水平): 1D 高斯核，输入 SceneColor → 输出 BloomBlurH_L0
-   │   BlurV (垂直): 1D 高斯核，输入 BloomBlurH_L0 → 输出 BloomBlur_L0
-   │   (重复 L1/L2/L3，每级分辨率减半)
-   │   Up L1: BloomBlur_L1 + Up(L2) → BloomResult_L1
-   │   Up L0: BloomBlur_L0 + Up(L1) → BloomResult_L0 (最终 Bloom 纹理)
-   │   输出: BloomResult (多级分辨率，最高分辨率供 Composite 使用)
+   │   BlurH (水平): 1D 高斯核，输入 → 输出 Pong
+   │   BlurV (垂直): 1D 高斯核，输入 Pong → 输出 Ping
+   │   (重复 L0/L1/L2/L3，每级分辨率减半: 1/2→1/4→1/8→1/16)
+   │   Up3: BlurV2 + Up(上一层) → bloomUp3
+   │   Up2: BlurV1 + Up3 → bloomUp2
+   │   Up1: BlurV0 + Up2 → bloomUp1
+   │   Up0: Up1 → BloomResult (全分辨率)
+   │   输出: Bloom (全分辨率)
    │
-   ├─ Pass 14-15: SSAO (SSAO + SSAOBlur)
+   ├─ Pass 25-26: SSAO (SSAO + SSAOBlur)
    │   SSAO: 从 Depth 逆投影重建视空间位置
    │        dFdx/dFdy 重建视空间法线
    │        → 64个半球方向采样（UBO 传输核）
@@ -184,8 +206,8 @@ main()
    │   SSAOBlur: 5×5 盒模糊降噪
    │   输出: SSAOBlurResult
    │
-   ├─ Pass 16: Composite
-   │   输入: SceneColor + BloomResult + SSAOBlurResult
+   ├─ Pass 27: Composite
+   │   输入: SceneColor + Bloom + SSAO
    │   → SSAO 遮蔽值调制场景颜色
    │   → Bloom 光晕叠加
    │   → Reinhard 色调映射: color / (color + 1.0)
@@ -198,37 +220,36 @@ main()
 **关键数据流图**：
 
 ```
-                    ┌──────────────┐
-                    │  ShadowPass  │
-                    └──────┬───────┘
-                           │ ShadowDepthArray (8层)
-                           ▼
-┌──────────┐    ┌──────────────┐    ┌──────────────────┐
-│SkyboxPass│───▶│ OpaquePass3D │───▶│TransparentPass3D │
-│          │    │  MRT:        │    │  (半透明混合)     │
-│HDR天空盒 │    │  Color+Normal│    │                  │
-└──────────┘    └──────┬───────┘    └────────┬─────────┘
-                       │ SceneColor(HDR)     │
-                       │ WorldNormal         │
-                       │ Depth               │
-                       └──────────┬──────────┘
-                                  │
-              ┌───────────────────┼───────────────────┐
-              ▼                   ▼                   ▼
-    ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-    │BloomBright  │     │   SSAO      │     │             │
-    │  4级Blur    │     │  SSAOBlur   │     │             │
-    │  3级Up      │     │             │     │             │
-    └──────┬──────┘     └──────┬──────┘     │             │
-           │ BloomResult       │ SSAOResult │             │
-           └───────────────────┼────────────┘             │
-                               ▼                          │
-                     ┌─────────────────┐                  │
-                     │   Composite     │◄─────────────────┘
-                     │ 色调映射+Gamma  │
-                     └────────┬────────┘
-                              ▼
-                         [屏幕输出]
+IBL Passes (一次性)
+  HDR天空盒 → EquirectToCubemap → Irradiance + Prefilter + BRDFLUT
+                                          │                  │
+                    ┌─────────────────────┘                  │
+                    ▼                                        │
+              ┌──────────┐    ┌──────────────┐              │
+              │ShadowPass│───▶│ OpaquePass3D │              │
+              │8层深度   │    │  IBL+PBR+阴影 │              │
+              └──────────┘    └──────┬───────┘              │
+                                    │ SceneColor(HDR)      │
+                                    │ WorldNormal          │
+                                    │ Depth                │
+                                    └──────────┬───────────┘
+                                               │
+              ┌────────────────────────────────┼────────────────────┐
+              ▼                                ▼                    ▼
+    ┌──────────────────┐              ┌─────────────┐      ┌─────────────┐
+    │BloomBright       │              │   SSAO      │      │             │
+    │  BlurH×4+BlurV×4 │              │  SSAOBlur   │      │             │
+    │  Up×4            │              │             │      │             │
+    └────────┬─────────┘              └──────┬──────┘      │             │
+             │ Bloom                         │ SSAO        │             │
+             └───────────────────────────────┼─────────────┘             │
+                                             ▼                           │
+                                   ┌─────────────────┐                   │
+                                   │   Composite     │◀──────────────────┘
+                                   │ 色调映射+Gamma  │
+                                   └────────┬────────┘
+                                            ▼
+                                       [屏幕输出]
 ```
 
 ---
@@ -251,8 +272,9 @@ main()
 | ComCamera | 渲染 | FOV, near/far, orbit参数(距离/方位角/仰角), 2D/3D 分离 |
 | ComLight | 渲染 | color, intensity, type, shadowLayer, 视锥体8角缓存 |
 | ComRender | 渲染 | meshID, materialID, visible, 动画精灵(2D) |
-| ComPhysics | 物理 | velocity, 2D AABB / 3D OBB |
-| ComGameplay | 逻辑 | 玩家状态机, tag标签, pendingDestroy |
+| ComParticle | 渲染 | 发射率、最大粒子数、发射器形状(点/盒/球/锥)、生命周期/速度/方向范围、颜色/大小渐变曲线、重力/阻力、旋转、精灵表、加法混合、子发射器 |
+| ComPhysics | 物理 | velocity, 2D AABB / 3D OBB, collisionLayer/mask, friction/restitution, isTrigger |
+| ComGameplay | 逻辑 | 玩家状态机(Idle/Walk/Jump/Fall), tag标签, pendingDestroy |
 
 ### 层级脏标记系统
 
@@ -269,125 +291,32 @@ CameraSystem::Update()
   → 清除 dirty 标记
 ```
 
-### 为什么 2D/3D 共用一套 ECS
+## 6. 关键文件速查
 
-- 2D 战斗场景和 3D 展示场景复用相同的变换层级、相机、物理系统
-- 组件内部通过 `union` 或独立字段区分 2D/3D 数据（如 ComTransform::m_Transform2D / m_Transform3D）
-- 渲染系统通过 Scene 类型决定走 2D Pass 还是 3D Pass
-
----
-
-## 6. 资源管理设计
-
-### 强类型 ID 体系
-
-```cpp
-struct TextureID     { uint32_t value; };
-struct MeshID        { uint32_t value; };
-struct ShaderID      { uint32_t value; };
-struct FramebufferID { uint32_t value; };
-
-// 编译期防混用
-static_assert(!std::is_same_v<TextureID, MeshID>);
-
-// 自定义 hash 支持 unordered_map
-template<> struct std::hash<TextureID> {
-    size_t operator()(TextureID id) const { return id.value; }
-};
-```
-
-**好处**：
-- `void BindTexture(TextureID id)` 不会接受 MeshID 参数，编译期报错
-- 避免了 OpenGL 原生 `GLuint` 裸传导致的"用纹理 ID 去绑定着色器"类 bug
-
-### 统一生命周期
-
-所有 GPU 资源通过 ResourceManager 统一管理：
-- `Register*()` 创建资源并分配 ID
-- `Get*(ID)` 按 ID 查询
-- `Find*(name)` 按名称查询（用于调试和序列化）
-- `ResourceManager::Cleanup()` 批量释放所有 GPU 资源
-
-不需要 shared_ptr 或引用计数——资源生命周期与 ResourceManager 绑定，符合 RAII。
-
----
-
-## 7. 渲染器架构演变
-
-### 原始架构 (硬编码管线)
-
-```
-Renderer::Flush() {
-    // 所有状态切换、纹理绑定、绘制调用混杂在一起
-    glEnable(GL_DEPTH_TEST);
-    glDepthFunc(GL_LESS);
-    for (auto& entity : opaqueQueue) {
-        // 手动绑定 shader、纹理、UBO...
-        DrawEntity(entity);
-    }
-    glEnable(GL_BLEND);
-    // ...
-}
-```
-
-**问题**：每加一个效果（阴影、Bloom、SSAO）都要改 Flush()，函数膨胀到数百行，状态管理混乱。
-
-### 当前架构 (声明式管线)
-
-```cpp
-// 每个 Pass 自描述
-class ShadowPass : public RenderPass {
-    void DeclareInputs()  override { /* 无需输入 */ }
-    void DeclareOutputs() override { Output(TextureSemantic::ShadowDepth, Level0); }
-    void Execute(const RenderContext& ctx) override { /* 渲染各光源深度层 */ }
-};
-
-// RenderPipeline 自动解析依赖
-void RenderPipeline::Execute(const RenderContext& ctx) {
-    for (auto& pass : m_Passes) {
-        // 1. 从纹理池解析输入 → 绑定到对应纹理单元
-        // 2. 执行 Pass
-        // 3. 注册输出到纹理池
-    }
-}
-```
-
-**收益**：新增 Bloom 后处理只需写 BloomBright/BloomBlur/BloomUp 三个 Pass 类，然后在管线中注册——3 行代码，不碰任何现有代码。
-
----
-
-## 8. 构建与调试流程
-
-### 开发工作流
-
-```
-编写/修改代码 → VS2022 编译 (x64 Release) → 
-运行程序 → ImGui 面板实时调参 → 
-确认效果 → 将参数固化为代码默认值
-```
-
-### ImGui 调试面板功能
-
-- 渲染状态可视化（FPS、draw call 数、Pass 耗时）
-- 实时参数调节（光照强度、Bloom 阈值、SSAO 半径/强度）
-- 纹理查看器（检查中间 Pass 输出：深度图、法线图、Bloom 各级）
-- 实体列表（选中查看组件详情）
-- 着色器热重载（可选功能）
-
----
-
-## 9. 关键文件速查
-
-| 文件 | 职责 | 面试重点 |
-|------|------|---------|
+| 文件 | 职责 | 关键点 |
+|------|------|--------|
 | `main.cpp` | 入口、主循环 | 程序生命周期 |
-| `Renderer.h/cpp` | 渲染协调 | UBO 管理、管线构建 |
-| `RenderPipeline.h/cpp` | 管线执行 | 纹理池、Pass 调度 |
+| `Scene.h` | 场景抽象基类 | BuildPipeline 接口、默认管线构建 |
+| `Scene2D.h/cpp` | 2D 战斗场景 | 2D 管线（2 Pass）、地图、AABB 物理 |
+| `Scene3D.h/cpp` | 3D 展示场景 | 3D 管线（27 Pass）、IBL 初始化、PBR+阴影 |
+| `SceneManager.h/cpp` | 场景管理器 | 场景注册与切换 |
+| `Renderer.h/cpp` | 渲染协调 | UBO 管理、渲染队列、管线驱动 |
+| `RenderPipeline.h/cpp` | 管线执行 | 纹理池、Pass 调度、PSO 增量切换 |
 | `RenderPass.h` | Pass 抽象 | 声明式 I/O 接口 |
-| `Scene.h` | 场景抽象 | ECS 注册、系统绑定 |
-| `EntityFactory.h/cpp` | 实体创建 | 工厂模式、批量构造 |
-| `Systems.cpp` | 游戏逻辑系统 | 相机/动画/层级/渲染提交 |
+| `RenderTypes.h` | 渲染类型定义 | SortKey(64bit)、UBO 结构、PSO 状态 |
+| `TextureSemantic.h` | 纹理语义 | 19 种语义枚举、槽位映射 |
+| `EntityFactory.h/cpp` | 实体工厂 | 相机/灯光/模型/玩家/粒子/层级创建，异步加载 |
+| `Systems.h/cpp` | ECS 系统 | 相机/动画/层级/灯光/渲染提交/玩家/销毁 |
+| `PhysicsSystem.h/cpp` | 物理引擎 | 2D AABB + 3D OBB SAT + 射线检测 + 触发器 |
+| `ParticleSystem.h/cpp` | 粒子系统 | 发射/更新/Instanced Billboard 渲染 |
+| `WorkerPool.h/cpp` | 线程池 | 异步模型加载 |
+| `GLCommandQueue.h/cpp` | GL 命令队列 | 延迟 GL 操作同步 |
 | `ResourceManager.h/cpp` | 资源管理 | 强类型 ID、生命周期 |
-| `ModelLoader.h/cpp` | 模型加载 | glTF 2.0 解析流程 |
-| `ComLight.h/cpp` | 灯光组件 | 视锥体拟合算法 |
-| `TextureSemantic.h` | 纹理语义 | 枚举定义、槽位映射 |
+| `ResourceIDs.h` | 资源 ID 定义 | TextureID/MeshID/ShaderID/FramebufferID |
+| `ModelLoader.h/cpp` | 模型加载 | glTF 2.0 + OBJ 解析流程 |
+| `GeometryUtils.h` | 几何工具 | Lengyel 切线、Y-up→Z-up、稀疏访问器 |
+| `ComLight.h/cpp` | 灯光组件 | 视锥体拟合、阴影矩阵 |
+| `AssistLight.h` | 灯光辅助 | 视锥拟合 + 纹素对齐 |
+| `PipelineUtils.h` | GL 状态工具 | 捕获/应用/恢复 |
+| `DrawUtils.h/cpp` | 绘制引擎 | SortKey 排序、UBO 更新、Uniform 反射绑定 |
+| `Material.h` | 材质描述 | 着色器+纹理映射+自定义属性 |

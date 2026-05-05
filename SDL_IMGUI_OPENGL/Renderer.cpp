@@ -30,6 +30,7 @@ void Renderer::Clear()
     m_Camera2DUnits.clear();
     m_Camera3DUnits.clear();
     m_InstancedUnits.clear();
+    m_LightUnits.clear();
     for (auto& [layer, units] : m_RenderUnits)
         units.clear();
 
@@ -47,11 +48,11 @@ void Renderer::SortAll()
     }
 }
 
-void Renderer::Flush(const std::vector<Light3DComponent*>& lights)
+void Renderer::Flush()
 {
     SortAll();
 
-    RenderContext ctx{ m_RenderUnits,m_Camera2DUnits, m_Camera3DUnits,lights,m_InstancedUnits,
+    RenderContext ctx{ m_RenderUnits,m_Camera2DUnits, m_Camera3DUnits,m_LightUnits,m_InstancedUnits,
         *m_LightUBO,*m_PerFrameUBO,*m_PerObjectUBO,m_Viewport };
     
 	m_Pipeline->Execute(ctx);
@@ -88,6 +89,12 @@ void Renderer::SubmitCameraUnits(const glm::mat4& projView, const std::vector<Re
 void Renderer::SubmitRenderUnits(const MeshID& mesh, const Material* material,const glm::mat4& model,RenderLayer renderlayer)
 {
     m_RenderUnits[renderlayer].emplace_back(mesh, material, model);
+}
+
+void Renderer::SubmitLightUnits(const Light3DComponent& light, const glm::vec3& position)
+{
+    m_LightUnits.push_back({ position,glm::normalize(position - light.target), light.color, light.intensity, light.type,light.range,
+        glm::radians(light.innerCone),glm::radians(light.outerCone),light.castShadow, -1,light.GetLightSpaceMatrix() });
 }
 
 void Renderer::SubmitInstancedUnits(MeshID mesh, const Material* material, RenderLayer layer, unsigned int instanceCount, bool additiveBlend)

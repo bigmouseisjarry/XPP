@@ -21,6 +21,8 @@ private:
 	std::vector<CameraUnit> m_Camera2DUnits;
 	std::vector<CameraUnit> m_Camera3DUnits;
 
+	std::vector<LightUnit> m_LightUnits;
+
 	std::vector<InstancedRenderUnit> m_InstancedUnits;
 
 	std::unique_ptr<UniformBuffer> m_PerFrameUBO;
@@ -52,7 +54,7 @@ public:
 	void InitUBO();
 	void Clear();
 	void SortAll();
-	void Flush(const std::vector<Light3DComponent*>& lights);  //TODO:不应该传值
+	void Flush(); 
 
 	void SetShadowArrayFBOID(FramebufferID id) { m_ShadowArrayFBOID = id; }
 	void SetSkyboxTexID(TextureID id) { m_SkyboxTexID = id; }
@@ -64,6 +66,7 @@ public:
 
 	void SubmitCameraUnits(const glm::mat4& projView, const std::vector<RenderLayer>& layers,RenderMode mode, const glm::vec3& viewPos = glm::vec3(0.0f));
 	void SubmitRenderUnits(const MeshID& mesh, const Material* material,const glm::mat4& model,RenderLayer renderlayer = RenderLayer::RQ_WorldBackground);
+	void SubmitLightUnits(const Light3DComponent& light, const glm::vec3& position);
 	void SubmitInstancedUnits(MeshID mesh, const Material* material, RenderLayer layer, unsigned int instanceCount, bool additiveBlend);
 
 private:

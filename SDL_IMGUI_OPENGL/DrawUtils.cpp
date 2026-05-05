@@ -41,7 +41,7 @@ namespace DrawUtils
         bool transparent,
         const glm::mat4& projView,
         const glm::vec3& viewPos,
-        const std::vector<Light3DComponent*>& lights,
+        const std::vector<LightUnit>& lights,
         UniformBuffer& lightUBO,
         UniformBuffer& perFrameUBO,
         UniformBuffer& perObjectUBO)
@@ -64,12 +64,17 @@ namespace DrawUtils
         lightData._numLights.x = numLights;
         for (int i = 0; i < numLights; i++)
         {
-            lightData.u_Lights[i].position = lights[i]->position;
-            lightData.u_Lights[i].color = lights[i]->color;
-            lightData.u_Lights[i].intensity = lights[i]->intensity;
-            lightData.u_Lights[i].lightSpaceMatrix = lights[i]->GetLightSpaceMatrix();
-            lightData.u_Lights[i].flags.x = lights[i]->castShadow ? 1 : 0;
-            lightData.u_Lights[i].flags.y = lights[i]->shadowLayerIndex;
+            lightData.u_Lights[i].position = lights[i].position;
+            lightData.u_Lights[i].direction = lights[i].direction;
+            lightData.u_Lights[i].intensity = lights[i].intensity;
+            lightData.u_Lights[i].color = lights[i].color;
+            lightData.u_Lights[i].range = lights[i].range;
+            lightData.u_Lights[i].lightSpaceMatrix = lights[i].lightSpaceMatrix;
+            lightData.u_Lights[i].flags.x = lights[i].castShadow ? 1 : 0;
+            lightData.u_Lights[i].flags.y = lights[i].shadowLayerIndex;
+            lightData.u_Lights[i].flags.z = static_cast<int>(lights[i].type);
+            lightData.u_Lights[i].innerCone = lights[i].innerCone;
+            lightData.u_Lights[i].outerCone = lights[i].outerCone;
         }
         lightUBO.SetData(&lightData, sizeof(LightArrayData));
 

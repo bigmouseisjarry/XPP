@@ -62,6 +62,21 @@ struct InstancedRenderUnit
     bool additiveBlend;
 };
 
+struct LightUnit
+{
+    glm::vec3 position = { 0, 0, 0 };
+    glm::vec3 direction = { 0, 0, -1 };
+    glm::vec3 color = { 1, 1, 1 };
+    float     intensity = 1.0f;
+    LightType type = LightType::Directional;
+    float     range = 50.0f;
+    float     innerCone = 0.0f;   // 弧度
+    float     outerCone = 0.0f;   // 弧度
+    bool      castShadow = false;
+    int       shadowLayerIndex = -1;
+    glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
+};
+
 struct alignas(16) PerFrameData
 {
     glm::mat4 u_ProjView;
@@ -85,10 +100,15 @@ struct alignas(16) LightData
 {
     glm::vec3 position;
     float     _pad0;
-    glm::vec3 color;
+    glm::vec3 direction;
     float     intensity;
+    glm::vec3 color;
+    float     range;
     glm::mat4 lightSpaceMatrix;
-    glm::ivec4 flags;   // x = castShadow, y = shadowLayer, zw = pad
+    glm::ivec4 flags;   // x = castShadow, y = shadowLayer, z=lightType,w = pad
+    float innerCone;
+    float outerCone;
+    glm::vec2 _pad1;
 };
 
 struct alignas(16) LightArrayData

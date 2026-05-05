@@ -80,11 +80,16 @@ layout(std140) uniform PerObjectData
 struct LightInfo
 {
     vec3  position;
-    float _lpad1;
-    vec3  color;
+    float _lpad0;
+    vec3  direction;
     float intensity;
+    vec3  color;
+    float range;
     mat4  lightSpaceMatrix;
-    ivec4 flags;        // x = castShadow, y = shadowLayer
+    ivec4 flags;        // x=castShadow, y=shadowLayer, z=lightType
+    float innerCone;
+    float outerCone;
+    vec2  _lpad1;
 };
 
 layout(std140, binding = 2) uniform LightArrayData
@@ -163,9 +168,33 @@ void main()
     vec3 Lo = vec3(0.0);
     for (int i = 0; i < u_NumLightsPad.x; i++)
     {
-        vec3 L = normalize(u_Lights[i].position - v_FragPos);
-        vec3 H = normalize(V + L);
+        vec3 L;
+        float attenuation = 1.0;
+        int lightType = u_Lights[i].flags.z;
 
+        if (lightType == 0) // 方向光
+        {
+            L = normalize(u_Lights[i].direction);
+        }
+        else if (lightType == 1) // 点光
+        {
+            L = normalize(u_Lights[i].position - v_FragPos);
+            float dist = length(u_Lights[i].position - v_FragPos);
+            if (dist > u_Lights[i].range) continue;
+            attenuation = 1.0 / (1.0 + 0.09 * dist + 0.032 * dist * dist);
+        }
+        else // 聚光
+        {
+            L = normalize(u_Lights[i].position - v_FragPos);
+            float dist = length(u_Lights[i].position - v_FragPos);
+            if (dist > u_Lights[i].range) continue;
+            attenuation = 1.0 / (1.0 + 0.09 * dist + 0.032 * dist * dist);
+            float theta = dot(L, normalize(-u_Lights[i].direction));
+            float epsilon = cos(u_Lights[i].innerCone) - cos(u_Lights[i].outerCone);
+            attenuation *= clamp((theta - cos(u_Lights[i].outerCone)) / epsilon, 0.0, 1.0);
+        }
+
+        vec3 H = normalize(V + L);
         float NdotL = max(dot(N, L), 0.0);
         float NdotH = max(dot(N, H), 0.0);
         float VdotH = max(dot(V, H), 0.0);
@@ -190,14 +219,12 @@ void main()
 
         // 阴影
         float shadow = 0.0;
-        if (u_Lights[i].flags.x != 0)
+        if (u_Lights[i].flags.x != 0 && lightType == 0)
         {
             vec4 fragPosLightSpace = u_Lights[i].lightSpaceMatrix * vec4(v_FragPos, 1.0);
             shadow = ShadowCalculation(fragPosLightSpace, N, L, u_Lights[i].flags.y);
         }
 
-        float dist = length(u_Lights[i].position - v_FragPos);
-        float attenuation = 1.0 / (1.0 + 0.09 * dist + 0.032 * dist * dist);
         vec3 radiance = u_Lights[i].color * u_Lights[i].intensity * attenuation;
         Lo += (kD * albedo / 3.14159265 + specBRDF) * radiance * NdotL * (1.0 - shadow);
     }

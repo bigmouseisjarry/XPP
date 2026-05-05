@@ -3,10 +3,6 @@
 #include <vector>
 #include "RenderPass.h"
 
-struct TextureSource {
-    TextureID textureID = { INVALID_ID };    // 新：TextureID 引用
-};
-
 struct PoolKey {
     TextureSemantic semantic;
     int level = 0;
@@ -31,10 +27,10 @@ public:
     void RegisterTextureID(TextureSemantic semantic, TextureID texID, int level = 0);
 
 private:
-    // 延迟解析：池中的 TextureSource → 实际的 GL texture ID
+    // 延迟解析：池中的 TextureID → 实际的 GL texture ID
     unsigned int ResolveTextureID(TextureSemantic semantic, int level = 0);
 
     std::vector<std::unique_ptr<RenderPass>> m_Passes;
-    std::unordered_map<PoolKey, TextureSource, PoolKeyHash> m_TexturePool;
+    std::unordered_map<PoolKey, TextureID, PoolKeyHash> m_TexturePool;
 };
 

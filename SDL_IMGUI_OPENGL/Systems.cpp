@@ -263,6 +263,13 @@ void RenderSubmitSystem::SubmitEntities(entt::registry& registry)
     }
 }
 
+void RenderSubmitSystem::SubmitLights(entt::registry& registry)
+{
+    auto view = registry.view<Light3DComponent, Transform3DComponent>();
+    for (auto [entity, light, transform] : view.each())
+        Renderer::Get()->SubmitLightUnits(light, transform.position);
+}
+
 void PlayerSystem::Update(entt::registry& registry, float deltaTime)
 {
     auto view = registry.view<PlayerComponent, Physics2DComponent, Visible2DComponent, Transform2DComponent>();
@@ -375,11 +382,3 @@ void HierarchySystem::Update(entt::registry& registry)
     }
 }
 
-void LightSystem::Update(entt::registry& registry)
-{
-    auto view = registry.view<Light3DComponent, Transform3DComponent>();
-    for (auto [entity, light, transform] : view.each())
-    {
-        light.position = transform.position;
-    }
-}

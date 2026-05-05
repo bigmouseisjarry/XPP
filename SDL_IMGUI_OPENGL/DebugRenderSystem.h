@@ -68,8 +68,8 @@ namespace DebugRenderSystem
 
         auto view = registry.view<Transform3DComponent, Light3DComponent>();
         for (auto [entity, transform, light] : view.each()) {
-            glm::vec3 pos = light.position;
-            glm::vec3 dir = glm::normalize(light.target - light.position);
+            glm::vec3 pos = transform.position;
+            glm::vec3 dir = glm::normalize(light.target - transform.position);
 
             // 构建旋转：局部 -Z → 世界 dir
             glm::vec3 z = -dir;

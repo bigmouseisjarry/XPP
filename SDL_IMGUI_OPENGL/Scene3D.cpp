@@ -115,8 +115,6 @@ void Scene3D::OnUpdate(float deltaTime)
 
 	HierarchySystem::Update(m_Registry);
 
-	LightSystem::Update(m_Registry);
-
 	CameraSystem::Update(m_Registry);
 
 	ParticleSystem::Get()->Update(m_Registry, deltaTime);
@@ -152,6 +150,16 @@ void Scene3D::OnImGuiRender()
 			ImGui::SliderFloat(("Intensity" + id).c_str(), &light.intensity, 0.0f, 10.0f);
 			ImGui::Checkbox(("Cast Shadow" + id).c_str(), &light.castShadow);
 			ImGui::DragFloat3(("Target" + id).c_str(), &light.target.x, 0.1f);
+			const char* lightTypeNames[] = { "Directional", "Point", "Spot" };
+			int typeIndex = static_cast<int>(light.type);
+			if (ImGui::Combo(("Type" + id).c_str(), &typeIndex, lightTypeNames, 3))
+				light.type = static_cast<LightType>(typeIndex);
+			if (light.type != LightType::Directional)
+				ImGui::DragFloat(("Range" + id).c_str(), &light.range, 0.5f, 1.0f, 200.0f);
+			if (light.type == LightType::Spot) {
+				ImGui::DragFloat(("Inner Cone" + id).c_str(), &light.innerCone, 0.5f, 0.0f, 90.0f);
+				ImGui::DragFloat(("Outer Cone" + id).c_str(), &light.outerCone, 0.5f, 0.0f, 90.0f);
+			}
 		}
 		lightIndex++;
 	}
@@ -187,20 +195,16 @@ void Scene3D::OnRender()
 
 	RenderSubmitSystem::SubmitEntities(m_Registry);
 
+	RenderSubmitSystem::SubmitLights(m_Registry);
+
 	DebugRenderSystem::SubmitColliderBoxes(m_Registry);
 
 	DebugRenderSystem::SubmitLightRanges(m_Registry);
 
 	ParticleSystem::Get()->SubmitRender(m_Registry);
 
-	// 收集 registry 中的 lights
-	std::vector<Light3DComponent*> lights;
-	auto lightView = m_Registry.view<Light3DComponent>();
-	for (auto&& [entity, light] : lightView.each())
-		lights.push_back(&light);
-
 	// Scene 自己 Flush
-	Renderer::Get()->Flush(lights);
+	Renderer::Get()->Flush();
 }
 
 void Scene3D::Quit()

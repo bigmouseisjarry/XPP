@@ -303,6 +303,9 @@
     <ClInclude Include="ResourceIDs.h">
       <Filter>资源管理器</Filter>
     </ClInclude>
+    <ClInclude Include="AssistLight.h">
+      <Filter>场景管理\灯光组件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="EntityFactory.cpp">

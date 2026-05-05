@@ -70,19 +70,17 @@ entt::entity EntityFactory::CreateCamera3D(entt::registry& registry, float fov, 
 }
 
 // TODO: 名字应该由外部传入，或者自动生成一个唯一名字
-entt::entity EntityFactory::CreateLight3D(entt::registry& registry, const glm::vec3& position, const glm::vec3& color, float intensity, bool castShadow)
+entt::entity EntityFactory::CreateLight3D(entt::registry& registry, const glm::vec3& position, LightType type, const glm::vec3& color, float intensity, bool castShadow)
 {
     auto entity = registry.create();
     registry.emplace<TagComponent>(entity, TagComponent{ .name = "Light3D" });
-	registry.emplace<Transform3DComponent>(entity, Transform3DComponent{ .position = position }); // 这两个position字段有点冗余，后续可以考虑合并
-   
-    auto& light = registry.emplace<Light3DComponent>(entity, Light3DComponent{
-        .position = position,
+    registry.emplace<Transform3DComponent>(entity, Transform3DComponent{ .position = position });
+    registry.emplace<Light3DComponent>(entity, Light3DComponent{
         .color = color,
         .intensity = intensity,
+        .type = type,
         .castShadow = castShadow
         });
-
     return entity;
 }
 

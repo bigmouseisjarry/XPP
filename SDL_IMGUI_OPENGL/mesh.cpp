@@ -25,6 +25,7 @@ Mesh::Mesh(const void* vertexData, unsigned int vertexSize, const unsigned int* 
         m_Layout.Push<float>(3);  // Position
         m_Layout.Push<float>(4);  // Color
         m_DrawMode = GL_LINES;
+        break;
     case VertexType::VertexParticle:            // 粒子实例数据走单独的 instance VBO
         m_Layout.Push<float>(3);  // Position
         m_Layout.Push<float>(2);  // UV
